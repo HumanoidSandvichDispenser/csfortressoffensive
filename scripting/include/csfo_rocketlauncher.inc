@@ -182,6 +182,7 @@ public Action:RocketStart(client)
 	TeleportEntity(ent, OwnerPos, InitialAng, InitialVec);
 	SDKHook(ent, SDKHook_StartTouchPost, RocketTouch);
 }
+
 public Action:RocketTouch(ent, other)
 {
 	if(GetEntProp(other, Prop_Data, "m_nSolidType") && !(GetEntProp(other, Prop_Data, "m_usSolidFlags") & 0x0004))
@@ -189,6 +190,15 @@ public Action:RocketTouch(ent, other)
 		new MissileOwner = GetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity");
 		if(IsClientInGame(MissileOwner))
 		{
+			if (IsPlayerAlive(MissileOwner))
+			{
+				float OwnerPos[3], RocketPos[3];
+				GetClientEyePosition(MissileOwner, OwnerPos);
+				GetEntPropVector(ent, Prop_Send, "m_vecOrigin", RocketPos);
+				float distance = GetVectorDistance(RocketPos, OwnerPos);
+
+				RJ_Jump(MissileOwner, distance, RocketPos, OwnerPos);
+			}
 			new Float:MissilePos[3];
 			new MissileOwnerTeam = GetEntProp(MissileOwner, Prop_Send, "m_iTeamNum");
 			new ExplosionIndex = CreateEntityByName("env_explosion");
@@ -255,12 +265,12 @@ public Action:GrenadeTouch(ent, other)
 {
 	if(GetEntProp(other, Prop_Data, "m_nSolidType") && !(GetEntProp(other, Prop_Data, "m_usSolidFlags") & 0x0004))
 	{
-		new MissileOwner = GetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity");
+		int MissileOwner = GetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity");
 		if(IsClientInGame(MissileOwner))
 		{
-			new Float:MissilePos[3];
-			new MissileOwnerTeam = GetEntProp(MissileOwner, Prop_Send, "m_iTeamNum");
-			new ExplosionIndex = CreateEntityByName("env_explosion");
+			float MissilePos[3];
+			int MissileOwnerTeam = GetEntProp(MissileOwner, Prop_Send, "m_iTeamNum");
+			int ExplosionIndex = CreateEntityByName("env_explosion");
 			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", MissilePos);
 			SetEntProp(ent, Prop_Send, "m_iTeamNum", MissileOwnerTeam);
 			DispatchKeyValue(ExplosionIndex,"classname","hegrenade_projectile");
@@ -281,4 +291,88 @@ public Action:GrenadeTouch(ent, other)
 		else
 			AcceptEntityInput(ent, "Kill");
 	}
+}
+
+// Borrowed from Rocket Jump plugin https://forums.alliedmods.net/showthread.php?t=283533
+public void RJ_Jump(int shooter, float distance, float clientORG[3], float explodeORG[3])
+{
+
+	//Check, how far is player from bullet
+	if(distance < MAX_DISTANCE)
+	{
+		bool down = false;
+		
+		//Create velocity
+		float velocity[3];
+		MakeVectorFromPoints(clientORG, explodeORG, velocity);
+		
+		if(velocity[2] < 0)
+			down = true;
+		
+		NormalizeVector(velocity, velocity);
+		
+		float clientVelocity[3];
+		GetEntPropVector(shooter, Prop_Data, "m_vecVelocity", clientVelocity);
+		
+		ScaleVector(velocity, JUMP_FORCE_MAIN);
+		AddVectors(velocity, clientVelocity, velocity);
+			
+		clientVelocity[2] = 0.0;
+		velocity[2] = 0.0;
+		
+		if (clientVelocity[0] < 0) {
+		    if (explodeORG[0] > clientORG[0]) {
+				ScaleVector(velocity, JUMP_FORCE_FORW);
+				
+		    } else {
+				ScaleVector(velocity, JUMP_FORCE_BACK);
+		    }
+		} else {
+		    if (explodeORG[0] < clientORG[0]) {
+				ScaleVector(velocity, JUMP_FORCE_FORW);
+				
+		    } else {
+				ScaleVector(velocity, JUMP_FORCE_BACK);
+		    }
+		}
+		
+		
+		if (clientVelocity[1] < 0) {
+			
+		    if (explodeORG[1] > clientORG[1])
+				ScaleVector(velocity, JUMP_FORCE_FORW);
+		    else
+				ScaleVector(velocity, JUMP_FORCE_BACK);
+				
+		} else {
+			
+		    if (explodeORG[1] < clientORG[1])
+				ScaleVector(velocity, JUMP_FORCE_FORW);
+		    else
+				ScaleVector(velocity, JUMP_FORCE_BACK);
+				
+		}
+		
+		if((GetEntityFlags(shooter) & FL_ONGROUND))
+			ScaleVector(velocity, RUN_FORCE_MAIN);
+
+
+		if(distance > 37.0)
+		{
+			if(velocity[2] > 0.0)
+				velocity[2] = 1000.0 + (JUMP_FORCE_UP * (MAX_DISTANCE - distance));
+			else
+				velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance));	
+		} else {
+			
+			velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance)) / 1.37;	
+		}
+		
+		if(down)
+			velocity[2] *= -1;
+		
+		TeleportEntity(shooter, NULL_VECTOR, NULL_VECTOR, velocity);
+
+	}
+
 }

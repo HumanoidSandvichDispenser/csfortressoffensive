@@ -404,8 +404,8 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	{
 		PrintToChatAll("DEBUG: trigger_hurt");
 	}
-	
-	if(victim && attacker)	// make sure they are both clients
+
+	if(victim && attacker)	// make sure they are both valid entities
 	{
 		if(GetClientTeam(victim) == GetClientTeam(attacker) || GetClientTeam(victim) == 9)
 		{
@@ -800,7 +800,6 @@ public void about(int client, int args)
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
 {
-	
 	//char cmd[16];
 	//GetCmdArg(0, cmd, sizeof(cmd));
 	int args = 2;
@@ -818,7 +817,6 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 	{
 		CreateBuildMenu(client);
 	}
-	
 }
 
 public void Command_class(int client, int args)
