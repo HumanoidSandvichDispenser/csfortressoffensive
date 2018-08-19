@@ -39,12 +39,9 @@ Handle batchTimer[MAXPLAYERS + 1];
 bool clientIsInBuyzone[MAXPLAYERS + 1] = false;
 bool firingFlamethrower[MAXPLAYERS + 1] = false;
 
-Handle sm_csf2_randomcrits; //Command for random crits
-//bool timerCreated[MAXPLAYERS + 1] = false;
-//int stickycount[MAXPLAYERS + 1] = 0;
+Handle sm_csf2_randomcrits; // Command for random crits
 
-//ConVar heavyhealth;
-
+// do not remove below pls
 //Removed trigger_hurt(trigger_resupply_blue_2)
 //trigger_multiple(prop_ammopack_large_1)
 //trigger_hurt(prop_medkit_med_1)
@@ -64,8 +61,6 @@ Handle sm_csf2_randomcrits; //Command for random crits
 #define class_sniper "Sniper"
 #define class_spy "Spy"
 
-//#define DemomanStickybombCount 24
-
 public Plugin myinfo =
 {
 	name = "Counter-Strike: Fortress Offensive",
@@ -74,8 +69,6 @@ public Plugin myinfo =
 	version = PLUGIN_VERSION,
 	url = ""
 };
-
-
 
 public void OnPluginStart()
 {
@@ -129,7 +122,8 @@ public void OnPluginStart()
 	CreateTimer(1.0, dispense, _, TIMER_REPEAT);
 }
 
-public OnMapStart() {
+public OnMapStart() 
+{
 
 	// PRECACHE SOUNDS
 	PrecacheSound(SOUND_PLACE, true);
@@ -334,7 +328,6 @@ public Action HurtTracker(Handle:event,const String:name[],bool:dontBroadcast)
 		
 }
 	
-
 public Action resetTimer(Handle timer, any attacker)
 {
 	damagedonetotal[attacker] = 0;
@@ -387,7 +380,6 @@ public Action KillReward(Handle:event,const String:name[],bool:dontBroadcast)
 		GivePlayerItem(attacker, "weapon_smokegrenade");
 		GivePlayerItem(attacker, "weapon_tagrenade");
 		GivePlayerItem(attacker, "weapon_tagrenade");
-		
 	}
 	
 	isInDispenser[client] = 0;
@@ -413,7 +405,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		PrintToChatAll("DEBUG: trigger_hurt");
 	}
 	
-	if(victim && attacker)	//make sure they are both clients
+	if(victim && attacker)	// make sure they are both clients
 	{
 		if(GetClientTeam(victim) == GetClientTeam(attacker) || GetClientTeam(victim) == 9)
 		{
@@ -460,28 +452,23 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 }
 
 public StartTouch(int client, int entity)
-{
-	//if (!IsValidEntity(client)) return;
-	
+{	
 	char entityclass[32];
 	char entityname[32];
-	//char clientclass[32];
-	//GetEdictClassname(entity, entityclass, sizeof(entityclass));
 	GetEntityClassname(entity, entityclass, sizeof(entityclass));
-	//GetEdictClassname(client, clientclass, sizeof(clientclass));
-	//PrintToChatAll("debug: entity: %s | other: %d", entityclass, client);
-	
 	Entity_GetName(entity, entityname, sizeof(entityname));
-	//PrintToConsole(client, "DEBUG: You touched %s", entityname);
+
 	if (StrEqual(entityname, "dispenser_2") || StrEqual(entityname, "dispenser_3"))
 	{
 		//isInDispenser[client] = true;
 		//PrintToConsole(client, "DEBUG: You touched a dispenser.");
 	}
+
 	if (StrEqual(entityclass, "prop_dynamic"))
 	{
 		
 		//PrintToChat(client, "DEBUG: resupplied"); 
+
 		switch(class[client])
 		{
 			case pyro:
@@ -653,23 +640,10 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "weapon_p90");
 			//GivePlayerItem(client, "weapon_sawedoff");
 			GivePlayerItem(client, "weapon_taser");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			GivePlayerItem(client, "weapon_incgrenade");
-			//Gives player 16 incendiary grenades
+			for (i = 0; i < 16; i++)
+			{
+				GivePlayerItem(client, "weapon_incgrenade");
+			}
 			
 			GivePlayerItem(client, "weapon_taser");
 			GivePlayerItem(client, "item_assaultsuit");
@@ -680,22 +654,11 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 		case demoman:
 		{
 			GivePlayerItem(client, "weapon_mag7");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
+			for (i = 0; i < 16; i++)
+			{
+				GivePlayerItem(client, "weapon_hegrenade");
+			}
+			
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
@@ -725,49 +688,18 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			
 			GivePlayerItem(client, "weapon_bizon");
 			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_healthshot");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
-			GivePlayerItem(client, "weapon_hegrenade");
+			for (i = 0; i < 8; i++)
+			{
+				GivePlayerItem(client, "weapon_hegrenade");
+				GivePlayerItem(client, "weapon_hegrenade");
+				GivePlayerItem(client, "weapon_hegrenade");
+				GivePlayerItem(client, "weapon_hegrenade");
+				GivePlayerItem(client, "weapon_hegrenade");
+				GivePlayerItem(client, "weapon_hegrenade");
+				GivePlayerItem(client, "weapon_hegrenade");
+				GivePlayerItem(client, "weapon_hegrenade");
+			}
+			
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
@@ -787,45 +719,16 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 		case spy:
 		{
 			
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_flashbang");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");		
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");
-			GivePlayerItem(client, "weapon_smokegrenade");			
-			GivePlayerItem(client, "weapon_tagrenade");
-			GivePlayerItem(client, "weapon_tagrenade");
-			GivePlayerItem(client, "weapon_tagrenade");
-			GivePlayerItem(client, "weapon_tagrenade");
-			GivePlayerItem(client, "weapon_tagrenade");
-			GivePlayerItem(client, "weapon_tagrenade");
-			GivePlayerItem(client, "weapon_tagrenade");
+			for (i = 0; i < 16; i++)
+			{
+				GivePlayerItem(client, "weapon_flashbang");
+				GivePlayerItem(client, "weapon_smokegrenade");
+			}
+			
+			for (i = 0; i < 8; i++)
+			{
+				GivePlayerItem(client, "weapon_tagrenade");
+			}
 			
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnLight, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -837,10 +740,6 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			PrintToChat(client, "Please choose a class before respawning.");
 		}
 	}
-	
-	
-	
-	
 }
 
 public Action RespawnScout(Handle timer, any client)
@@ -848,7 +747,6 @@ public Action RespawnScout(Handle timer, any client)
 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.75);
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 125, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 125, 4, true);
-	
 }
 
 public Action RespawnLight(Handle timer, any client)
@@ -961,8 +859,6 @@ public menuhandler(Handle:menu, MenuAction:action, param1, param2)
 
 			if (StrEqual(item, "class_scout"))
 			{
-				
-				//
 				ForcePlayerSuicide(param1);
 				PrintToChat(param1, "You will respawn as Scout.");
 				class[param1] = scout; //*param1 is the client id. class is an array of integers containing the unique client ids of every player in the server
