@@ -95,7 +95,7 @@ public void OnPluginStart()
 	
 	HookEvent("player_spawn", SpawnEvent);
 	HookEvent("player_hurt", HurtTracker);
-	HookEvent("player_death", KillReward);
+	HookEvent("player_death", KillReward, EventHookMode_Pre);
 	HookEvent("round_start", RoundStart);
 	HookEvent("round_poststart", RoundPostStart);
 	HookEvent("weapon_fire", WeaponFire);
@@ -118,6 +118,7 @@ public void OnPluginStart()
 	minefilter = GetConVarInt( sm_pp_minefilter );
 	
 	PrecacheModel(ROCKET_MODEL);
+	
 	
 	CreateTimer(1.0, dispense, _, TIMER_REPEAT);
 }
@@ -151,6 +152,45 @@ public OnMapStart()
 	PrecacheModel(ROCKET_MODEL, true);
 	PrecacheModel("models/props/de_mill/generatoronwheels.mdl", true);
 	PrecacheModel("models/props/cs_office/vending_machine.mdl", true);
+	PrecacheModel("models/props/coop_cementplant/coop_ammo_stash/coop_ammo_stash_full.mdl", true);
+	
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/scout/scout_redv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/medic/medic_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/medic/medic_redv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.mdl", true);
+	PrecacheModel("models/player/custom_player/kuristaja/tf2/spy/spy_redv2.mdl", true);
+	
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_redv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_redv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_redv2");
 }
 
 public Action dispense(Handle timer)
@@ -176,7 +216,7 @@ public Action dispense(Handle timer)
 				if (secondaryWeapon != -1)
 				{
 					int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iSecondaryReserveAmmoCount");
-					SetEntProp(secondaryWeapon, Prop_Send, "m_iSecondaryReserveAmmoCount", secondaryRes + (isInDispenser[client] * 5));
+					SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (isInDispenser[client] * 5));
 				}
 			}
 		}
@@ -207,7 +247,7 @@ public Action OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 	return Plugin_Continue;
 }
 
-public Action RoundStart(Handle:event,const String:name[],bool:dontBroadcast)
+public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
 {
 	ServerCommand("mp_buytime 0");
 	
@@ -221,28 +261,28 @@ public Action RoundStart(Handle:event,const String:name[],bool:dontBroadcast)
 	return Plugin_Continue;
 }
 
-public Action RoundPostStart(Handle:event,const String:name[],bool:dontBroadcast)
+public Action RoundPostStart(Handle event,const String:name[],bool dontBroadcast)
 {
 	ServerCommand("mp_buytime 0");
 	
 	return Plugin_Continue;
 }
 
-public Action EnterBuyzone(Handle:event,const String:name[],bool:dontBroadcast)
+public Action EnterBuyzone(Handle event,const String:name[],bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	clientIsInBuyzone[client] = true;
 	return Plugin_Continue;
 }
 
-public Action ExitBuyzone(Handle:event,const String:name[],bool:dontBroadcast)
+public Action ExitBuyzone(Handle event,const String:name[],bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	clientIsInBuyzone[client] = false;
 	return Plugin_Continue;
 }
 
-public Action HurtTracker(Handle:event,const String:name[],bool:dontBroadcast)
+public Action HurtTracker(Handle event,const String:name[],bool dontBroadcast)
 {
 	int damagedone = GetEventInt(event, "dmg_health");
 	/*
@@ -254,26 +294,6 @@ public Action HurtTracker(Handle:event,const String:name[],bool:dontBroadcast)
 	int hitarea = GetEventInt(event, "hitgroup");
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
-	
-	//Medic healing (NOT WORKING)
-	/*
-	new clientteam = GetClientTeam(client);
-	new attackerteam = GetClientTeam(attacker);
-	decl String:weapon[32]; 
-	GetEventString(event, "weapon", weapon, sizeof(weapon));
-	if (clientteam == attackerteam)
-	{
-		if (StrEqual(weapon, "bizon"))
-		{
-			SetEntProp(client, Prop_Send, "m_iHealth", (health + (damagedone * 2)), 4);
-			SetEntProp(client, Prop_Send, "m_ArmorValue", (armor + damagedonearmor), 4);
-			
-		}
-		SetEntProp(client, Prop_Send, "m_iHealth", (health + damagedone), 4);
-		SetEntProp(client, Prop_Send, "m_ArmorValue", (armor + damagedonearmor), 4);
-		
-	}
-	*/
 	damagedonetotal[attacker] += damagedone;
 	//clientIsShooting[attacker] = true;
 	
@@ -282,24 +302,18 @@ public Action HurtTracker(Handle:event,const String:name[],bool:dontBroadcast)
 		PrintToConsole(client, "DEBUG: Took damage by world.");
 	}
 
-	if (client > 0 && attacker > 0) //checks to see if the client and attacker id is valid
+	if (client > 0 && attacker > 0) // checks to see if the client and attacker id is valid
 	{
 
-		if (hitarea == 1) //checks the place where the user got shot (1 = hs)
+		if (hitarea == 1) // checks the place where the user got shot (1 = hs)
 		{
 			SetHudTextParams(-1.0, 0.6, 2.0, 150, 220, 50, 205);
 			ShowHudText(attacker, 2, "-%d (CRITICAL HIT!)", damagedonetotal[attacker]);
-			//PrintHintText(client, "<< %d (CRITICAL HIT!)", damagedone);
-			//PrintHintText(attacker, ">> %d (CRITICAL HIT!)", damagedone);
 			if (IsPlayerAlive(client)) ClientCommand(attacker, "playgamesound training/bell_impact.wav");
-			//return Plugin_Handled;
 		} else {
 			SetHudTextParams(-1.0, 0.6, 2.0, 200, 50, 50, 205);
 			ShowHudText(attacker, 2, "-%d", damagedonetotal[attacker]);
-			//PrintHintText(client, "<< %d", damagedone);
-			//PrintHintText(attacker, ">> %d", damagedone);
 			if (IsPlayerAlive(client)) ClientCommand(attacker, "playgamesound training/bell_normal.wav");
-			//return Plugin_Handled;
 		}
 	}
 	
@@ -384,7 +398,22 @@ public Action KillReward(Handle:event,const String:name[],bool:dontBroadcast)
 	
 	isInDispenser[client] = 0;
 	
+	float pos[3];
+	GetClientAbsOrigin(client, pos);
+	DropAmmo(pos);
+	
 	return Plugin_Continue;
+}
+
+public Action DropAmmo(float pos[3])
+{
+	int ammobox = CreateEntityByName("prop_physics_override");
+	Entity_SetName(ammobox, "item_ammo_drop"); // name this entity so it can be referred to outside of this scope.
+	Entity_SetModel(ammobox, "models/props/coop_cementplant/coop_ammo_stash/coop_ammo_stash_full.mdl");
+	if (DispatchSpawn(ammobox))
+	{
+		TeleportEntity(ammobox, pos, NULL_VECTOR, NULL_VECTOR);
+	}
 }
 
 public OnClientPutInServer(client)
@@ -405,8 +434,13 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		PrintToChatAll("DEBUG: trigger_hurt");
 	}
 
-	if(victim && attacker)	// make sure they are both valid entities
+	if (victim > 0 && attacker > 0)	// make sure they are both valid entities
 	{
+		if (class[attacker] == soldier && attacker == victim)
+		{
+			fDamage /= 2.5;
+		}
+		
 		if(GetClientTeam(victim) == GetClientTeam(attacker) || GetClientTeam(victim) == 9)
 		{
 			if (class[attacker] == medic)
@@ -421,25 +455,13 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 				SetEntProp(victim, Prop_Send, "m_iHealth", iNewVal);
 			}
 			
-			
-			/*iCurrentVal = GetEntProp(victim, Prop_Send, "m_ArmorValue");
-			iNewVal = RoundFloat(float(iCurrentVal) + fDamage);
-			if(iNewVal > 100)
-			{
-				iNewVal = 100;
-			}
-			iNewVal = RoundFloat(float(iCurrentVal + fDamage));
-			SetEntProp(victim, Prop_Send, "m_ArmorValue", iNewVal);*/
-			
 			fDamage = 0.0;
-			return Plugin_Changed;
-			
 		}
 		if (class[attacker] == spy && (GetClientTeam(victim) != GetClientTeam(attacker)) && fDamage > 75.0)
 		{
 			fDamage = 1000.0;
-			return Plugin_Changed;
 		}
+		return Plugin_Changed;
 	}
 	
 	if (GetConVarBool(sm_csf2_randomcrits))
@@ -462,6 +484,31 @@ public StartTouch(int client, int entity)
 	{
 		//isInDispenser[client] = true;
 		//PrintToConsole(client, "DEBUG: You touched a dispenser.");
+	}
+	
+	if (StrEqual(entityname, "item_ammo_drop"))
+	{
+		ClientCommand(client, "playgamesound items/pickup_ammo_01.wav");
+		RemoveEdict(entity);
+		if (IsClientInGame(client))
+		{
+			int primaryWeapon = GetPlayerWeaponSlot(client, 0);
+			int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
+			int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
+			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + (isInDispenser[client] * 5));
+			
+			if (primaryWeapon != -1)
+			{
+				int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
+				SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + 50);
+			}
+			
+			if (secondaryWeapon != -1)
+			{
+				int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
+				SetEntProp(secondaryWeapon, Prop_Send, "m_iSecondaryReserveAmmoCount", secondaryRes + 50);
+			}
+		}
 	}
 
 	if (StrEqual(entityclass, "prop_dynamic"))
@@ -511,6 +558,7 @@ public StartTouch(int client, int entity)
 		}
 	}
 	
+	
 	//1886351984
 	
 }
@@ -531,7 +579,7 @@ public Action WeaponFire(Handle:event,const String:name[],bool:dontBroadcast)
 	{
 		GetEventString(event, "weapon", weapon, 128);
 	
-		if (StrEqual(weapon, "weapon_mag7")) PlaceMine(client);
+		//if (StrEqual(weapon, "weapon_mag7")) PlaceMine(client);
 		//if (StrEqual(weapon, "weapon_mag7")) ClientCommand(client, "sm_mine");
 		if (StrEqual(weapon, "weapon_xm1014")) RocketStart(client);
 	}
@@ -618,13 +666,15 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 		
 		case scout:
 		{
-			
-			
 			GivePlayerItem(client, "weapon_nova");
 			GivePlayerItem(client, "weapon_p250");
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnScout, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 125;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/scout/scout_redv2.mdl");
+			
 		}
 		
 		case soldier:
@@ -633,6 +683,9 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			//GivePlayerItem(client, "weapon_sawedoff");
 			healthtype[client] = 175;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.mdl");
 		}
 		
 		case pyro:
@@ -640,7 +693,7 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "weapon_p90");
 			//GivePlayerItem(client, "weapon_sawedoff");
 			GivePlayerItem(client, "weapon_taser");
-			for (i = 0; i < 16; i++)
+			for (int i = 0; i < 16; i++)
 			{
 				GivePlayerItem(client, "weapon_incgrenade");
 			}
@@ -649,12 +702,15 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2.mdl");
 		}
 		
 		case demoman:
 		{
 			GivePlayerItem(client, "weapon_mag7");
-			for (i = 0; i < 16; i++)
+			for (int i = 0; i < 16; i++)
 			{
 				GivePlayerItem(client, "weapon_hegrenade");
 			}
@@ -662,6 +718,9 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2.mdl");
 		}
 		
 		
@@ -672,6 +731,9 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnHeavy, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 300;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2.mdl");
 		}
 		
 		case engineer:
@@ -681,6 +743,9 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnLight, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 125;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2.mdl");
 		}
 		
 		case medic:
@@ -688,7 +753,7 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			
 			GivePlayerItem(client, "weapon_bizon");
 			GivePlayerItem(client, "weapon_healthshot");
-			for (i = 0; i < 8; i++)
+			for (int i = 0; i < 8; i++)
 			{
 				GivePlayerItem(client, "weapon_hegrenade");
 				GivePlayerItem(client, "weapon_hegrenade");
@@ -703,6 +768,9 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/medic/medic_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/medic/medic_redv2.mdl");
 		}
 		
 		case sniper:
@@ -714,18 +782,21 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnLight, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 125;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.mdl");
 		}
 		
 		case spy:
 		{
 			
-			for (i = 0; i < 16; i++)
+			for (int i = 0; i < 16; i++)
 			{
 				GivePlayerItem(client, "weapon_flashbang");
 				GivePlayerItem(client, "weapon_smokegrenade");
 			}
 			
-			for (i = 0; i < 8; i++)
+			for (int i = 0; i < 8; i++)
 			{
 				GivePlayerItem(client, "weapon_tagrenade");
 			}
@@ -733,6 +804,9 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnLight, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 125;
+			
+			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/spy/spy_redv2.mdl");
 		}
 		
 		default:

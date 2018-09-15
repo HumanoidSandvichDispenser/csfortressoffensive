@@ -7,6 +7,13 @@
 #endif
 #define _csfo_rocketlauncher_included
 
+#define BULLET_SPEED			1000.0
+#define MAX_DISTANCE			160.0
+#define JUMP_FORCE_UP			8.0
+#define JUMP_FORCE_FORW			1.20
+#define JUMP_FORCE_BACK			1.25
+#define JUMP_FORCE_MAIN			270.0
+#define RUN_FORCE_MAIN			0.8
 
 
 #include <smlib>
@@ -197,7 +204,7 @@ public Action:RocketTouch(ent, other)
 				GetEntPropVector(ent, Prop_Send, "m_vecOrigin", RocketPos);
 				float distance = GetVectorDistance(RocketPos, OwnerPos);
 
-				RJ_Jump(MissileOwner, distance, RocketPos, OwnerPos);
+				RJ_Jump(MissileOwner, distance, RocketPos, OwnerPos, 1);
 			}
 			new Float:MissilePos[3];
 			new MissileOwnerTeam = GetEntProp(MissileOwner, Prop_Send, "m_iTeamNum");
@@ -213,7 +220,7 @@ public Action:RocketTouch(ent, other)
 			TeleportEntity(ExplosionIndex, MissilePos, NULL_VECTOR, NULL_VECTOR);
 			SetEntPropEnt(ExplosionIndex, Prop_Send, "m_hOwnerEntity", MissileOwner);
 			SetEntProp(ExplosionIndex, Prop_Send, "m_iTeamNum", MissileOwnerTeam);
-			EmitSoundToAll("weapons/hegrenade/explode5.wav", ExplosionIndex, 1, 90);
+			//EmitSoundToAll("weapons/hegrenade/explode5.wav", ExplosionIndex, 1, 90);
 			AcceptEntityInput(ExplosionIndex, "Explode");
 			DispatchKeyValue(ExplosionIndex,"classname","env_explosion");
 			AcceptEntityInput(ExplosionIndex, "Kill");
@@ -294,7 +301,7 @@ public Action:GrenadeTouch(ent, other)
 }
 
 // Borrowed from Rocket Jump plugin https://forums.alliedmods.net/showthread.php?t=283533
-public void RJ_Jump(int shooter, float distance, float clientORG[3], float explodeORG[3])
+public void RJ_Jump(int shooter, float distance, float clientORG[3], float explodeORG[3], float scale)
 {
 
 	//Check, how far is player from bullet
@@ -322,17 +329,17 @@ public void RJ_Jump(int shooter, float distance, float clientORG[3], float explo
 		
 		if (clientVelocity[0] < 0) {
 		    if (explodeORG[0] > clientORG[0]) {
-				ScaleVector(velocity, JUMP_FORCE_FORW);
+				ScaleVector(velocity, JUMP_FORCE_FORW * scale);
 				
 		    } else {
-				ScaleVector(velocity, JUMP_FORCE_BACK);
+				ScaleVector(velocity, JUMP_FORCE_BACK * scale);
 		    }
 		} else {
 		    if (explodeORG[0] < clientORG[0]) {
-				ScaleVector(velocity, JUMP_FORCE_FORW);
+				ScaleVector(velocity, JUMP_FORCE_FORW * scale);
 				
 		    } else {
-				ScaleVector(velocity, JUMP_FORCE_BACK);
+				ScaleVector(velocity, JUMP_FORCE_BACK * scale);
 		    }
 		}
 		
@@ -340,16 +347,16 @@ public void RJ_Jump(int shooter, float distance, float clientORG[3], float explo
 		if (clientVelocity[1] < 0) {
 			
 		    if (explodeORG[1] > clientORG[1])
-				ScaleVector(velocity, JUMP_FORCE_FORW);
+				ScaleVector(velocity, JUMP_FORCE_FORW * scale);
 		    else
-				ScaleVector(velocity, JUMP_FORCE_BACK);
+				ScaleVector(velocity, JUMP_FORCE_BACK * scale);
 				
 		} else {
 			
 		    if (explodeORG[1] < clientORG[1])
-				ScaleVector(velocity, JUMP_FORCE_FORW);
+				ScaleVector(velocity, JUMP_FORCE_FORW * scale);
 		    else
-				ScaleVector(velocity, JUMP_FORCE_BACK);
+				ScaleVector(velocity, JUMP_FORCE_BACK * scale);
 				
 		}
 		
@@ -360,12 +367,12 @@ public void RJ_Jump(int shooter, float distance, float clientORG[3], float explo
 		if(distance > 37.0)
 		{
 			if(velocity[2] > 0.0)
-				velocity[2] = 1000.0 + (JUMP_FORCE_UP * (MAX_DISTANCE - distance));
+				velocity[2] = 1000.0 + (JUMP_FORCE_UP * (MAX_DISTANCE - distance)  * scale);
 			else
-				velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance));	
+				velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance) * scale);	
 		} else {
 			
-			velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance)) / 1.37;	
+			velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance) * scale) / 1.37;	
 		}
 		
 		if(down)

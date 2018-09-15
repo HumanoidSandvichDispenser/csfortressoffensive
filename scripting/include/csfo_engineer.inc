@@ -120,6 +120,8 @@ public Action CreateDispenser(int client, float position[3], float normal[3])
 	if (GetClientTeam(client) == CS_TEAM_T) SetHudTextParams(0.2, 0.1, 0, 95, 151, 239, 235);
 	if (GetClientTeam(client) == CS_TEAM_CT) SetHudTextParams(0.2, 0.1, 0, 239, 197, 95, 235);
 	ShowHudText(client, 2, "Dispenser: %d HP", health);
+	
+	DispenserBuilt[client] = true;
 }
 
 //from https://forums.alliedmods.net/showthread.php?t=129597
@@ -129,7 +131,7 @@ public int CreateTrigger(float position[3], char triggername[32])
 	if (trigger != -1)
 	{
 		DispatchKeyValue(trigger, "targetname", triggername);
-		DispatchKeyValue(trigger, "damage", "-5");
+		DispatchKeyValue(trigger, "damage", "-10");
 		DispatchKeyValue(trigger, "nodmgforce", "1");
 		DispatchKeyValue(trigger, "spawnflags", "4097");
 	}
@@ -166,7 +168,6 @@ public dispenseammo(const String:output[], caller, activator, float delay)
 	{
 		return;
 	}
-	
 
 	if (StrEqual(output, "OnStartTouch", false))
 	{
@@ -176,8 +177,6 @@ public dispenseammo(const String:output[], caller, activator, float delay)
 	{
 		isInDispenser[client]--;
 	}
-	
-	PrintToConsole(client, "DEBUG: trigger_hurt function successful.");
 }
 
 public Action Autobuild(Handle timer, any building)
