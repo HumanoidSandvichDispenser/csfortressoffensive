@@ -204,7 +204,7 @@ public Action:RocketTouch(ent, other)
 				GetEntPropVector(ent, Prop_Send, "m_vecOrigin", RocketPos);
 				float distance = GetVectorDistance(RocketPos, OwnerPos);
 
-				RJ_Jump(MissileOwner, distance, RocketPos, OwnerPos, 1);
+				RJ_Jump(MissileOwner, distance, RocketPos, OwnerPos, 1.0);
 			}
 			new Float:MissilePos[3];
 			new MissileOwnerTeam = GetEntProp(MissileOwner, Prop_Send, "m_iTeamNum");

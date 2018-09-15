@@ -38,6 +38,8 @@ int damagedonetotal[MAXPLAYERS + 1] = 0;
 Handle batchTimer[MAXPLAYERS + 1];
 bool clientIsInBuyzone[MAXPLAYERS + 1] = false;
 bool firingFlamethrower[MAXPLAYERS + 1] = false;
+int PrimaryReserveAmmo[9] = {32, 20, 200, 16, 200, 32, 140, 30, 32};
+int SecondaryReserveAmmo[9] = {90, 32, 32, 32, 32, 200, 0, 80, 0};
 
 Handle sm_csf2_randomcrits; // Command for random crits
 
@@ -216,7 +218,7 @@ public Action dispense(Handle timer)
 				if (secondaryWeapon != -1)
 				{
 					int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iSecondaryReserveAmmoCount");
-					SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (isInDispenser[client] * 5));
+					SetEntProp(secondaryWeapon, Prop_Send, "m_iSecondaryReserveAmmoCount", secondaryRes + (isInDispenser[client] * 5));
 				}
 			}
 		}
@@ -500,13 +502,13 @@ public StartTouch(int client, int entity)
 			if (primaryWeapon != -1)
 			{
 				int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-				SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + 50);
+				SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + (PrimaryReserveAmmo[class[client] - 1] / 2));
 			}
 			
 			if (secondaryWeapon != -1)
 			{
 				int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-				SetEntProp(secondaryWeapon, Prop_Send, "m_iSecondaryReserveAmmoCount", secondaryRes + 50);
+				SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (SecondaryReserveAmmo[class[client] - 1] / 2));
 			}
 		}
 	}

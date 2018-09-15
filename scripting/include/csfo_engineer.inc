@@ -117,8 +117,8 @@ public Action CreateDispenser(int client, float position[3], float normal[3])
 	AutobuildTimer[client] = CreateTimer(0.1, Autobuild, dispenser);
 	
 	int health = Entity_GetHealth(dispenser);
-	if (GetClientTeam(client) == CS_TEAM_T) SetHudTextParams(0.2, 0.1, 0, 95, 151, 239, 235);
-	if (GetClientTeam(client) == CS_TEAM_CT) SetHudTextParams(0.2, 0.1, 0, 239, 197, 95, 235);
+	if (GetClientTeam(client) == CS_TEAM_T) SetHudTextParams(0.2, 0.1, 0.0, 95, 151, 239, 235);
+	if (GetClientTeam(client) == CS_TEAM_CT) SetHudTextParams(0.2, 0.1, 0.0, 239, 197, 95, 235);
 	ShowHudText(client, 2, "Dispenser: %d HP", health);
 	
 	DispenserBuilt[client] = true;
