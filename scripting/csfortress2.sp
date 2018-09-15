@@ -428,6 +428,7 @@ public OnClientPutInServer(client)
 
 public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, &damagetype, &bweapon, Float:damageForce[3], Float:damagePosition[3]) 
 {
+	bool changed = false;
 	decl String:sClassname[64];
 	GetEdictClassname(inflictor, sClassname, sizeof(sClassname));
 	
@@ -435,13 +436,32 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	{
 		PrintToChatAll("DEBUG: trigger_hurt");
 	}
+	
+	if (damagetype == DMG_FALL)
+	{
+		fDamage /= 4;
+		changed = true;
+	}
 
 	if (victim > 0 && attacker > 0)	// make sure they are both valid entities
 	{
-		if (class[attacker] == soldier && attacker == victim)
+		if (class[attacker] == soldier) 
 		{
-			fDamage /= 2.5;
+			if (attacker == victim)
+			{
+				fDamage /= 2.5;
+			}
+			else if (GetClientTeam(attacker) != GetClientTeam(victim))
+			{
+				float ClientPos[3];
+				GetClientEyePosition(victim, ClientPos);
+				float distance = GetVectorDistance(damagePosition, ClientPos);
+
+				RJ_Jump(victim, distance, damagePosition, ClientPos, 0.75);
+			}
 		}
+		
+		
 		
 		if(GetClientTeam(victim) == GetClientTeam(attacker) || GetClientTeam(victim) == 9)
 		{
@@ -463,14 +483,16 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		{
 			fDamage = 1000.0;
 		}
-		return Plugin_Changed;
+		changed = true;
 	}
 	
 	if (GetConVarBool(sm_csf2_randomcrits))
 	{
 		fDamage *= 3;
-		return Plugin_Changed;
+		changed = true;
 	}
+	
+	if (changed) return Plugin_Changed;
 	
 	return Plugin_Continue;
 }
