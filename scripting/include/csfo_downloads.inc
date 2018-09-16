@@ -1,0 +1,86 @@
+/*
+**
+*/
+#if defined _INCLUDE_included
+ #endinput
+#endif
+#define _INCLUDE_included
+
+public DownloadFiles()
+{
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_redv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_redv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.mdl");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_redv2.mdl");
+	
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_redv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_redv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.phy");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_redv2.phy");
+	
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_redv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_redv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.vvd");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_redv2.vvd");
+	
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_redv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_redv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.dx90.vtx");
+	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_redv2.dx90.vtx");
+}

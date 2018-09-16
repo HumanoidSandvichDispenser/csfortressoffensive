@@ -10,10 +10,11 @@
 #include <cstrike>
 #include <sdkhooks>
 #include <smlib>
-//#include <botattackcontrol>
+#include <botattackcontrol>
 #include <csfo_rocketlauncher>
 #include <csfo_stickybomb>
 #include <csfo_engineer>
+#include <csfo_downloads>
 #include <colors>
 
 enum classtype
@@ -175,24 +176,7 @@ public OnMapStart()
 	PrecacheModel("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.mdl", true);
 	PrecacheModel("models/player/custom_player/kuristaja/tf2/spy/spy_redv2.mdl", true);
 	
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/scout/scout_redv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/medic/medic_redv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2");
-	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_redv2");
+	DownloadFiles();
 }
 
 public Action dispense(Handle timer)
@@ -429,35 +413,92 @@ public OnClientPutInServer(client)
 public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, &damagetype, &bweapon, Float:damageForce[3], Float:damagePosition[3]) 
 {
 	bool changed = false;
+	float distance = Entity_GetDistance(attacker, victim);
 	decl String:sClassname[64];
 	GetEdictClassname(inflictor, sClassname, sizeof(sClassname));
 	
-	if (fDamage == -2.0)
-	{
-		PrintToChatAll("DEBUG: trigger_hurt");
-	}
-	
-	if (damagetype == DMG_FALL)
+	if (damagetype == DMG_FALL) // Reduce Fall Damage
 	{
 		fDamage /= 4;
 		changed = true;
 	}
+	
+	// Weapon Damage Fall Off and Ramp Up
+	if (IsValidEdict(bweapon))
+	{
+		char wClassname[64];
+		GetEdictClassname(bweapon, wClassname, 64);
+		if (StrEqual(wClassname, "weapon_nova") || StrEqual(wClassname, "weapon_p250"))
+		{
+			if (distance < 500)
+			{
+				fDamage *= 1.25;
+			}
+			else if (distance > 1500)
+			{
+				fDamage *= 0.8;
+			}
+			changed = true;
+		}
+		else if (StrEqual(wClassname, "weapon_ssg08"))
+		{
+			// do nothing
+		}
+		else if (StrEqual(wClassname, "weapon_negev"))
+		{
+			if (distance < 480)
+			{
+				fDamage *= 1.7;
+			}
+			else if (distance > 750)
+			{
+				fDamage *= 0.8;
+			}
+			else if (distance > 1250)
+			{
+				fDamage *= 0.5;
+			}
+			changed = true;
+		}
+		else if (StrEqual(wClassname, "weapon_p90"))
+		{
+			if (distance < 170)
+			{
+				fDamage *= 1.5;
+			}
+			else if (distance > 280)
+			{
+				fDamage *= 0.7;
+			}
+			changed = true;
+		}
+		else if (StrContains(wClassname, "weapon_"))
+		{
+			if (distance < 440)
+			{
+				fDamage *= 1.15;
+			}
+			else if (distance > 950)
+			{
+				fDamage *= 0.7;
+			}
+			changed = true;
+		}
+	}
+	
+	//-------
 
 	if (victim > 0 && attacker > 0)	// make sure they are both valid entities
 	{
 		if (class[attacker] == soldier) 
 		{
-			if (attacker == victim)
-			{
-				fDamage /= 2.5;
-			}
-			else if (GetClientTeam(attacker) != GetClientTeam(victim))
+			if (GetClientTeam(attacker) != GetClientTeam(victim))
 			{
 				float ClientPos[3];
 				GetClientEyePosition(victim, ClientPos);
-				float distance = GetVectorDistance(damagePosition, ClientPos);
+				float dist = GetVectorDistance(damagePosition, ClientPos);
 
-				RJ_Jump(victim, distance, damagePosition, ClientPos, 0.75);
+				RJ_Jump(victim, dist, damagePosition, ClientPos, 0.75);
 			}
 		}
 		
@@ -519,7 +560,7 @@ public StartTouch(int client, int entity)
 			int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 			int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 			int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
-			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + (isInDispenser[client] * 5));
+			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + 50);
 			
 			if (primaryWeapon != -1)
 			{
@@ -911,6 +952,69 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 		Command_class(client, args);
 	}
 	
+	if (StrEqual(sArgs, "class scout", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Scout.");
+		class[client] = scout;
+	}
+	
+	if (StrEqual(sArgs, "class soldier", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Soldier.");
+		class[client] = soldier;
+	}
+	
+	if (StrEqual(sArgs, "class pyro", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Pyro.");
+		class[client] = pyro;
+	}
+	
+	if (StrEqual(sArgs, "class demoman", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Demoman.");
+		class[client] = demoman;
+	}
+	
+	if (StrEqual(sArgs, "class heavy", false) || StrEqual(sArgs, "class heavyweapons", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Heavy.");
+		class[client] = heavyweapons;
+	}
+	
+	if (StrEqual(sArgs, "class engineer", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Engineer.");
+		class[client] = engineer;
+	}
+	
+	if (StrEqual(sArgs, "class medic", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Medic.");
+		class[client] = medic;
+	}
+	
+	if (StrEqual(sArgs, "class sniper", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Sniper.");
+		class[client] = sniper;
+	}
+	
+	if (StrEqual(sArgs, "class spy", false))
+	{
+		ForcePlayerSuicide(client);
+		PrintToChat(client, "You will respawn as Spy.");
+		class[client] = spy;
+	}
+	
 	if (strcmp(sArgs, "build", false) == 0)
 	{
 		CreateBuildMenu(client);
@@ -1130,4 +1234,15 @@ public OnClientDisconnect(client)
 	SDKUnhook(client, SDKHook_StartTouchPost, StartTouch);
 	SDKUnhook(client, SDKHook_EndTouch, EndTouch);
 	SDKUnhook(client, SDKHook_OnTakeDamage, Event_OnTakeDamage);
+}
+
+public Action OnShouldBotAttackPlayer(bot, player, &bool:result)
+{
+	if (result) return Plugin_Continue;
+	
+	if (class[bot] == medic)
+	{
+		result = true;
+	}
+	return Plugin_Changed;
 }
