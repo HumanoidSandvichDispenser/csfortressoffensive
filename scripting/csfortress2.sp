@@ -419,7 +419,8 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	
 	if (damagetype == DMG_FALL) // Reduce Fall Damage
 	{
-		fDamage /= 4;
+		fDamage /= 4.0;
+		if (fDamage < 4.0) fDamage = 0.0;
 		changed = true;
 	}
 	
