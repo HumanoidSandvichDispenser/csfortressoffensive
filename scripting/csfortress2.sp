@@ -510,7 +510,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 			{
 				new iNewVal, iCurrentVal;
 				iCurrentVal = GetEntProp(victim, Prop_Send, "m_iHealth");
-				iNewVal = RoundFloat(float(iCurrentVal) + fDamage);
+				iNewVal = RoundFloat(float(iCurrentVal) + 2);
 				if(iNewVal > healthtype[victim])
 				{
 					iNewVal = healthtype[victim];
@@ -656,6 +656,12 @@ public Action WeaponFire(Handle:event,const String:name[],bool:dontBroadcast)
 		if (StrEqual(weapon, "weapon_p90"))CreateFlames(client);
 	}
 	
+	if (class[client] == medic)
+	{
+		int primaryWeapon = GetPlayerWeaponSlot(client, 0);
+		SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", 1200);
+	}
+	
 }
 
 public Action CreateFlames(int client)
@@ -714,8 +720,24 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 	
 	if (IsFakeClient(client))
 	{
-		int rndclass = GetRandomInt(1, 9);
-		class[client] = classtype:rndclass;
+		if (ClassOnTeam(GetClientTeam(client), medic) < 1) class[client] = medic; // Medic is priority class
+		else
+		{
+			int rndclass;
+
+			if (ClassOnTeam(GetClientTeam(client), sniper) > 2) // Bots prefer not to have more than 2 snipers or spies on their team
+			{
+				do rndclass = GetRandomInt(1, 9); while (rndclass == 8);
+				class[client] = classtype:rndclass;
+			}
+			else if (ClassOnTeam(GetClientTeam(client), spy) > 2)
+			{
+				rndclass = GetRandomInt(1, 8);
+			}
+			else rndclass = GetRandomInt(1, 9);
+			
+			class[client] = classtype:rndclass;
+		}
 		
 		if (class[client] == none)
 		{
@@ -1240,9 +1262,25 @@ public Action OnShouldBotAttackPlayer(bot, player, &bool:result)
 {
 	if (result) return Plugin_Continue;
 	
-	if (class[bot] == medic)
+	if (class[bot] == medic && GetClientHealth(player) < healthtype[player])
 	{
 		result = true;
 	}
 	return Plugin_Changed;
+}
+
+public int ClassOnTeam(int team, classtype:targetclass)
+{
+	if (GetTeamClientCount(team) == 0) return 0;
+	int count = 0;
+	for (int i = 1; i < MAXPLAYERS; i++)
+	{
+		if (!IsClientConnected(i) || !IsClientInGame(i)) continue;
+		if (GetClientTeam(i) == team && class[i] == targetclass)
+		{
+			count++;
+		}
+	}
+	
+	return count;
 }
