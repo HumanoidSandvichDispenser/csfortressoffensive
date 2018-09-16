@@ -33,12 +33,13 @@ enum classtype
 
 EngineVersion g_Game;
 classtype class[MAXPLAYERS + 1] = none;
-int healthtype[MAXPLAYERS + 1] = 0;
+int healthtype[MAXPLAYERS + 1] = 100;
 bool clientIsBurning[MAXPLAYERS + 1] = false;
 int damagedonetotal[MAXPLAYERS + 1] = 0;
 Handle batchTimer[MAXPLAYERS + 1];
 bool clientIsInBuyzone[MAXPLAYERS + 1] = false;
 bool firingFlamethrower[MAXPLAYERS + 1] = false;
+bool airborneByBlast[MAXPLAYERS + 1] = false;
 int PrimaryReserveAmmo[9] = {32, 20, 200, 16, 200, 32, 140, 30, 32};
 int SecondaryReserveAmmo[9] = {90, 32, 32, 32, 32, 200, 0, 80, 0};
 
@@ -191,6 +192,7 @@ public Action dispense(Handle timer)
 				int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 				int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 				int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
+				if (armorValue + 50 > 150) armorValue = 100;
 				SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + (isInDispenser[client] * 5));
 				
 				if (primaryWeapon != -1)
@@ -235,6 +237,8 @@ public Action OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 
 public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
 {
+	CreateTimer(0.2, DecayOverheal, _, TIMER_REPEAT);
+	
 	ServerCommand("mp_buytime 0");
 	
 	for (int client = 1; client < MAXPLAYERS; client++)
@@ -509,12 +513,13 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		{
 			if (class[attacker] == medic)
 			{
-				new iNewVal, iCurrentVal;
+				int iNewVal, iCurrentVal, MaxVal;
 				iCurrentVal = GetEntProp(victim, Prop_Send, "m_iHealth");
+				MaxVal = GetEntData(victim, FindDataMapInfo(victim, "m_iMaxHealth"), 4);
 				iNewVal = RoundFloat(float(iCurrentVal) + 2);
-				if(iNewVal > healthtype[victim])
+				if(iNewVal > MaxVal)
 				{
-					iNewVal = healthtype[victim];
+					iNewVal = MaxVal;
 				}
 				SetEntProp(victim, Prop_Send, "m_iHealth", iNewVal);
 			}
@@ -561,6 +566,7 @@ public StartTouch(int client, int entity)
 			int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 			int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 			int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
+			if (armorValue + 50 > 150) armorValue = 100;
 			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + 50);
 			
 			if (primaryWeapon != -1)
@@ -722,6 +728,7 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 	if (IsFakeClient(client))
 	{
 		if (ClassOnTeam(GetClientTeam(client), medic) < 1) class[client] = medic; // Medic is priority class
+		else if (ClassOnTeam(GetClientTeam(client), medic) == 1 && class[client] == medic) class[client] = medic; // If they are the only medic, they wont switch off.
 		else
 		{
 			int rndclass;
@@ -768,9 +775,9 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 		case soldier:
 		{
 			GivePlayerItem(client, "weapon_xm1014");
-			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(0.1, RespawnSoldier, client, TIMER_FLAG_NO_MAPCHANGE);
 			//GivePlayerItem(client, "weapon_sawedoff");
-			healthtype[client] = 175;
+			healthtype[client] = 200;
 			
 			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.mdl");
 			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.mdl");
@@ -906,26 +913,37 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 
 public Action RespawnScout(Handle timer, any client)
 {
-	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.75);
-	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 125, 4, true);
-	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 125, 4, true);
+	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.7);
+	SetEntityGravity(client, 0.55);
+	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 185, 4, true); // Overheal
+	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 125, 4, true);	   // Normal Health
 }
 
 public Action RespawnLight(Handle timer, any client)
 {
-    SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 125, 4, true);
-    SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 125, 4, true);
+	SetEntityGravity(client, 1.0);
+	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 185, 4, true);
+	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 125, 4, true);
 }
 
 public Action RespawnNormal(Handle timer, any client)
 {
-    SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 175, 4, true);
-    SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 175, 4, true);
+	SetEntityGravity(client, 1.0);
+	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 260, 4, true);
+	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 175, 4, true);
+}
+
+public Action RespawnSoldier(Handle timer, any client)
+{
+	SetEntityGravity(client, 0.9);
+	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 300, 4, true);
+	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 200, 4, true);
 }
 
 public Action RespawnHeavy(Handle timer, any client)
 {
-	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 300, 4, true);
+	SetEntityGravity(client, 1.0);
+	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 450, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 300, 4, true);
 }
 
@@ -1263,7 +1281,7 @@ public Action OnShouldBotAttackPlayer(bot, player, &bool:result)
 {
 	if (result) return Plugin_Continue;
 	
-	if (class[bot] == medic && GetClientHealth(player) < healthtype[player])
+	if (class[bot] == medic && GetClientHealth(player) < healthtype[player] + 50)
 	{
 		result = true;
 	}
@@ -1284,4 +1302,14 @@ public int ClassOnTeam(int team, classtype:targetclass)
 	}
 	
 	return count;
+}
+
+public Action DecayOverheal(Handle timer)
+{
+	for (int i = 1; i < MAXPLAYERS; i++)
+	{
+		if (!IsClientConnected(i) || !IsClientInGame(i)) continue;
+		int health = GetClientHealth(i);
+		if (health > healthtype[i]) SetEntData(i, FindDataMapInfo(i, "m_iHealth"), health - 1, 4, true);
+	}
 }
