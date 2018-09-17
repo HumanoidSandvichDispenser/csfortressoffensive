@@ -15,6 +15,7 @@
 #include <csfo_stickybomb>
 #include <csfo_engineer>
 #include <csfo_downloads>
+#include <csfo_gamemodes>
 #include <colors>
 
 enum classtype
@@ -28,7 +29,8 @@ enum classtype
 	engineer = 6,
 	medic = 7,
 	sniper = 8,
-	spy = 9
+	spy = 9,
+	saxtonhale = 10
 };
 
 EngineVersion g_Game;
@@ -39,11 +41,14 @@ int damagedonetotal[MAXPLAYERS + 1] = 0;
 Handle batchTimer[MAXPLAYERS + 1];
 bool clientIsInBuyzone[MAXPLAYERS + 1] = false;
 bool firingFlamethrower[MAXPLAYERS + 1] = false;
-bool airborneByBlast[MAXPLAYERS + 1] = false;
 int PrimaryReserveAmmo[9] = {32, 20, 200, 16, 200, 32, 140, 30, 32};
 int SecondaryReserveAmmo[9] = {90, 32, 32, 32, 32, 200, 0, 80, 0};
 
+int SaxtonHaleClient = -1;
+classtype:SaxtonHaleOldClass = classtype:0;
+
 Handle sm_csf2_randomcrits; // Command for random crits
+ConVar sm_csf2_gamemode;
 
 // do not remove below pls
 //Removed trigger_hurt(trigger_resupply_blue_2)
@@ -86,7 +91,7 @@ public void OnPluginStart()
 	
 	
 	RegAdminCmd("sm_forceclass", Command_forceclass, ADMFLAG_SLAY, "Forces class to other players.");
-	
+	AddCommandListener(ChooseTeam, "jointeam");
 	//ServerCommand("mp_ct_default_secondary  "); //Sets the default secondary for both teams to " ", which is blank.
 	//ServerCommand("mp_t_default_secondary  ");
 	ServerCommand("mp_death_drop_grenade 0");
@@ -105,12 +110,15 @@ public void OnPluginStart()
 	HookEvent("weapon_fire", WeaponFire);
 	HookEvent("enter_buyzone", EnterBuyzone);
 	HookEvent("exit_buyzone", ExitBuyzone);
-	
+	HookEvent("bomb_planted", BombPlanted);
 	
 	sm_pp_tripmines = CreateConVar( "sm_pp_tripmines", "99999", sm_pp_tripmines_desc);
 	sm_pp_minedmg = CreateConVar( "sm_pp_minedmg", "100", "damage (magnitude) of the tripmines");
 	sm_pp_minerad = CreateConVar( "sm_pp_minerad", "0", "override for explosion damage radius");
 	sm_csf2_randomcrits = CreateConVar("sm_csf2_randomcrits", "0", "Enables/disables random critical hits");
+	sm_csf2_gamemode = CreateConVar("sm_csf2_gamemode", "0", "0 = None, 1 = Deathmatch, 2 = Defusal");
+	
+	sm_csf2_gamemode.AddChangeHook(UpdateGamemode);
 	
 	sm_pp_minefilter = CreateConVar( "sm_pp_minefilter", "2", "0 = detonate when laser touches anyone, 1 = enemies and owner only, 2 = enemies only");
 	HookEvent( "player_use", Event_PlayerUse );
@@ -157,6 +165,7 @@ public OnMapStart()
 	PrecacheModel("models/props/de_mill/generatoronwheels.mdl", true);
 	PrecacheModel("models/props/cs_office/vending_machine.mdl", true);
 	PrecacheModel("models/props/coop_cementplant/coop_ammo_stash/coop_ammo_stash_full.mdl", true);
+	PrecacheModel("models/player/custom_player/legacy/tm_p­hoenix_heavy.mdl");
 	
 	PrecacheModel("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.mdl", true);
 	PrecacheModel("models/player/custom_player/kuristaja/tf2/scout/scout_redv2.mdl", true);
@@ -212,8 +221,8 @@ public Action dispense(Handle timer)
 	}
 }
 
-public Action OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon ) {
-
+public Action OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon ) 
+{
 	if( !IsValidClient(client) ) return Plugin_Continue;
 
 	if( (buttons & IN_USE) == 0 ) {
@@ -235,9 +244,81 @@ public Action OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 	return Plugin_Continue;
 }
 
+public Action SetupEnd(Handle timer, int gamemode)
+{
+	if (gamemode == 5)
+	{
+		ServerCommand("mp_ignore_round_win_conditions 1");
+		ServerCommand("say idididi");
+		
+		int NewSaxtonHale = GetRandomPlayer(CS_TEAM_T);
+		SaxtonHaleOldClass = class[NewSaxtonHale];
+		SaxtonHaleClient = NewSaxtonHale;
+		ChangeClientTeam(NewSaxtonHale, CS_TEAM_CT);
+		
+		class[NewSaxtonHale] = saxtonhale;
+		CS_RespawnPlayer(NewSaxtonHale);
+		
+		Client_RemoveAllWeapons(NewSaxtonHale, "weapon_knife", true);
+		char name[64];
+		GetClientName(NewSaxtonHale, name, 64);
+		
+		for (int i = 1; i < MAXPLAYERS; i++)
+		{
+			if (IsClientConnected(i) && IsClientInGame(i))
+			{
+				if (GetClientTeam(i) == CS_TEAM_CT && i != NewSaxtonHale)
+				{
+					ChangeClientTeam(i, CS_TEAM_T);
+					CS_RespawnPlayer(i);
+				}
+			}
+			
+		}
+		
+		int HP = GetTeamClientCount(CS_TEAM_T) * 575;
+		PrintToChatAll("%s \x09became Saxton Hale with %d HP!", name, HP);
+		
+		CreateTimer(0.1, RespawnSaxtonHale, NewSaxtonHale);
+		ServerCommand("mp_ignore_round_win_conditions 0");
+	}
+	
+	for (int i = 1; i < MAXPLAYERS; i++)
+	{
+		if (IsClientConnected(i) && IsClientInGame(i))
+		{
+			if (GetClientTeam(i) == CS_TEAM_T) SetEntityMoveType(i, MOVETYPE_WALK);	
+			else if (gamemode == 5) SetEntityMoveType(i, MOVETYPE_WALK);
+		}
+		
+	}
+	
+	PrintToChatAll("\x06Setup is now over.");
+}
+
 public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
 {
-	CreateTimer(0.2, DecayOverheal, _, TIMER_REPEAT);
+	if (sm_csf2_gamemode.IntValue == 2 || sm_csf2_gamemode.IntValue == 5)
+	{
+		for (int i = 1; i < MAXPLAYERS; i++)
+		{
+			if (IsClientConnected(i) && IsClientInGame(i))
+			{
+				if (GetClientTeam(i) == CS_TEAM_T || sm_csf2_gamemode.IntValue == 5) SetEntityMoveType(i, MOVETYPE_NONE);	
+				
+			}
+		}
+		
+		CreateTimer(15.0, SetupEnd, sm_csf2_gamemode.IntValue);
+	}
+	
+	if (SaxtonHaleOldClass != classtype:0) class[SaxtonHaleClient] = SaxtonHaleOldClass;
+	SaxtonHaleClient = -1;
+	
+	ServerCommand("exec csfortress2_script");	
+	ShowGamemodeMessage(sm_csf2_gamemode);
+	
+	CreateTimer(0.25, DecayOverheal, _, TIMER_REPEAT);
 	
 	ServerCommand("mp_buytime 0");
 	
@@ -370,13 +451,14 @@ public Action KillReward(Handle:event,const String:name[],bool:dontBroadcast)
 {
 	
 	
-	int client_id = GetEventInt(event, "userid");
-	int client = GetClientOfUserId(client_id);
-	int attacker_id = GetEventInt(event, "attacker");
-	int attacker = GetClientOfUserId(attacker_id);
+	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
+	int assister = GetClientOfUserId(GetEventInt(event, "assister"));
 	
 	ClientCommand(attacker, "playgamesound ui/xp_milestone_01.wav");
 	
+	AddPoints(GetClientTeam(attacker), 2, sm_csf2_gamemode);
+	if (assister != 0 && IsClientConnected(assister) && IsClientInGame(assister) && GetClientTeam(assister) == GetClientTeam(attacker)) AddPoints(GetClientTeam(attacker), 1, sm_csf2_gamemode);
 	
 	if (class[attacker] == spy)
 	{
@@ -420,6 +502,12 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	float distance = Entity_GetDistance(attacker, victim);
 	decl String:sClassname[64];
 	GetEdictClassname(inflictor, sClassname, sizeof(sClassname));
+	
+	if (sm_csf2_gamemode.IntValue == 5 && GetClientTeam(attacker) == CS_TEAM_CT)
+	{
+		fDamage = 100.0;
+		changed = true;
+	}
 	
 	if (damagetype == DMG_FALL) // Reduce Fall Damage
 	{
@@ -725,6 +813,11 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 	
 	ServerCommand("mp_buytime 0");
 	
+	if (sm_csf2_gamemode.IntValue == 2)
+	{
+		if (GetClientTeam(client) == CS_TEAM_T) GivePlayerItem(client, "weapon_c4");
+	}
+	
 	if (IsFakeClient(client))
 	{
 		if (ClassOnTeam(GetClientTeam(client), medic) < 1) class[client] = medic; // Medic is priority class
@@ -904,6 +997,11 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/spy/spy_redv2.mdl");
 		}
 		
+		case saxtonhale:
+		{
+			
+		}
+		
 		default:
 		{
 			PrintToChat(client, "Please choose a class before respawning.");
@@ -945,6 +1043,17 @@ public Action RespawnHeavy(Handle timer, any client)
 	SetEntityGravity(client, 1.0);
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 450, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 300, 4, true);
+}
+
+public Action RespawnSaxtonHale(Handle timer, any client)
+{
+	healthtype[client] = GetTeamClientCount(CS_TEAM_CT) * 575;
+	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.5);
+	SetEntityGravity(client, 0.25);
+	int Health = GetTeamClientCount(CS_TEAM_CT) * 575;
+	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), Health, 4, true);
+	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), Health, 4, true);
+	SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl");
 }
 
 public Action OnClientCommand(int client, int args)
@@ -1281,11 +1390,13 @@ public Action OnShouldBotAttackPlayer(bot, player, &bool:result)
 {
 	if (result) return Plugin_Continue;
 	
-	if (class[bot] == medic && GetClientHealth(player) < healthtype[player] + 50)
+	if (class[bot] == medic && GetClientHealth(player) < healthtype[player] * 1.25)
 	{
-		result = true;
+		if (class[player] != medic) result = true;
+		else if (GetClientHealth(player) > healthtype[player]) result = true;
+		return Plugin_Changed;
 	}
-	return Plugin_Changed;
+	return Plugin_Continue;
 }
 
 public int ClassOnTeam(int team, classtype:targetclass)
@@ -1312,4 +1423,30 @@ public Action DecayOverheal(Handle timer)
 		int health = GetClientHealth(i);
 		if (health > healthtype[i]) SetEntData(i, FindDataMapInfo(i, "m_iHealth"), health - 1, 4, true);
 	}
+}
+
+public Action ChooseTeam(client, const String:command[], argc)
+{ 
+	if (sm_csf2_gamemode.IntValue != 5) return Plugin_Continue;
+	if (client == 0) 
+    { 
+        return Plugin_Continue; 
+    } 
+
+	if (GetClientTeam(client) == CS_TEAM_T) 
+    {
+		if (SaxtonHaleClient != -1 && GetTeamClientCount(CS_TEAM_T) > 0 && SaxtonHaleClient != client)
+		{
+			PrintToChat(client, "There can only be 1 player on Terrorist side."); 
+			ChangeClientTeam(client, CS_TEAM_CT);
+			return Plugin_Handled;
+		}
+		if (SaxtonHaleClient == -1 && GetTeamClientCount(CS_TEAM_T) == 0)
+		{
+			ChangeClientTeam(client, CS_TEAM_CT); 
+			return Plugin_Handled;
+		}
+	} 
+
+	return Plugin_Continue; 
 }
