@@ -46,6 +46,13 @@ int SecondaryReserveAmmo[9] = {90, 32, 32, 32, 32, 200, 0, 80, 0};
 
 int SaxtonHaleClient = -1;
 classtype:SaxtonHaleOldClass = classtype:0;
+int SaxtonHaleRage = 0;
+int SaxtonHaleBossType = 0;
+/*
+** 0 = Saxton Hale (Instakill when rage activated),
+** 1 = Bonk Boy (Super Low Gravity when rage activated),
+** 2 = BLU Heavy Weapons Guy (Minigun when rage activated)
+*/
 
 Handle sm_csf2_randomcrits; // Command for random crits
 ConVar sm_csf2_gamemode;
