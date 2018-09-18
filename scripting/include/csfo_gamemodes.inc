@@ -59,7 +59,7 @@ public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 		case 5:
 		{
 			maxrounds.IntValue = 4;
-			ignorewinconditions.BoolValue = false;
+			ignorewinconditions.BoolValue = true;
 			UseRespawnWaves.BoolValue = false;
 			time_defuse.FloatValue = 0.0;
 			time_hostage.FloatValue = 0.0;
