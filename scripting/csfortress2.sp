@@ -390,7 +390,8 @@ public Action HurtTracker(Handle event,const String:name[],bool dontBroadcast)
 	
 	if (!IsClientConnected(attacker) && !IsClientInGame(attacker) && client > 0)
 	{
-		PrintToConsole(client, "DEBUG: Took damage by world.");
+		PrintToConsole(client, "DEBUG: Took damage 
+		world.");
 	}
 
 	if (client > 0 && attacker > 0) // checks to see if the client and attacker id is valid
@@ -1100,12 +1101,12 @@ public Action OnClientCommand(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	return Plugin_Continue;
+	return Plugin_Continue;to
 }
 
 public void about(int client, int args)
 {
-	PrintToChatAll(client, "\x0FCounter-Strike: Fortress Offensive 1.00\x01 by Humanoid Sandvich Dispenser\nPlayer Models by Kuristaja ");
+	PrintToChat(client, "\x0FCounter-Strike: Fortress Offensive 1.00\x01 by Humanoid Sandvich Dispenser\nPlayer Models by Kuristaja");
 }
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
