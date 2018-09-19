@@ -1069,7 +1069,7 @@ public Action RespawnSaxtonHale(Handle timer, any client)
 {
 	healthtype[client] = GetTeamClientCount(CS_TEAM_CT) * 575;
 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.5);
-	SetEntityGravity(client, 0.25);
+	SetEntityGravity(client, 0.7);
 	int x = GetTeamClientCount(CS_TEAM_T);
 	int HP = (x*5)+((x^4)/4) + 2000;
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), HP, 4, true);
@@ -1105,7 +1105,7 @@ public Action OnClientCommand(int client, int args)
 
 public void about(int client, int args)
 {
-	CPrintToChat(client, "{lightgreen}Counter-Strike: Fortress Offensive 1.00 by {default}Humanoid Sandvich Dispenser");
+	PrintToChatAll(client, "\x0FCounter-Strike: Fortress Offensive 1.00\x01 by Humanoid Sandvich Dispenser\nPlayer Models by Kuristaja ");
 }
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
