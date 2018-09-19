@@ -106,7 +106,7 @@ public Action ShowGamemodeMessage(ConVar GMConVar)
 {
 	if (GMConVar.IntValue == 1)
 	{
-		PrintToChatAll("\x05Deathmatch: \x07First team to 55 points win. Even in this gamemode, teamwork is essential to victory.");
+		PrintToChatAll("[CS:FO] \x06Deathmatch: \x05First team to 55 points win. Even in this gamemode, teamwork is essential to victory.");
 	}
 	if (GMConVar.IntValue == 2)
 	{
@@ -115,17 +115,17 @@ public Action ShowGamemodeMessage(ConVar GMConVar)
 			if (!IsClientInGame(i)) continue;
 			if (GetClientTeam(i) == CS_TEAM_CT)
 			{
-				PrintToChat(i, "\x05CS Payload - BLU TEAM (Defending): \x07Prevent the bomb from being planted.");
+				PrintToChat(i, "[CS:FO] \x06CS Payload - BLU TEAM (Defending): \x05Prevent the bomb from being planted.");
 			}
 			if (GetClientTeam(i) == CS_TEAM_T)
 			{
-				PrintToChat(i, "\x05CS Payload - RED TEAM (Attacking): \x077Plant the bomb at the bombsite.");
+				PrintToChat(i, "[CS:FO] \x06CS Payload - RED TEAM (Attacking): \x05Plant the bomb at the bombsite.");
 			}
 		}
 	}
 	if (GMConVar.IntValue == 5)
 	{
-		PrintToChatAll("\x05Saxton Hale: \x07Kill Saxton Hale. Kill Everyone as Saxton Hale.");
+		PrintToChatAll("[CS:FO] \x06Saxton Hale: \x05Kill Saxton Hale. Kill Everyone as Saxton Hale.");
 	}
 	
 	return Plugin_Continue;
@@ -138,7 +138,9 @@ public Action BombPlanted(Handle event, const String:name[], bool dontBroadcast)
 	return Plugin_Continue;
 }
 
-int GetRandomPlayer(team) 
+// Saxton Hale Code
+
+public int GetRandomPlayer(team) 
 { 
 
     int clients[MAXPLAYERS + 1], clientCount;

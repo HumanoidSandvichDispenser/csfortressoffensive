@@ -47,7 +47,8 @@ int SecondaryReserveAmmo[9] = {90, 32, 32, 32, 32, 200, 0, 80, 0};
 int SaxtonHaleClient = -1;
 classtype:SaxtonHaleOldClass = classtype:0;
 int SaxtonHaleRage = 0;
-int SaxtonHaleBossType = 0;
+int BossType = 0;
+bool RageActive = false;
 /*
 ** 0 = Saxton Hale (Instakill when rage activated),
 ** 1 = Bonk Boy (Super Low Gravity when rage activated),
@@ -255,9 +256,6 @@ public Action SetupEnd(Handle timer, int gamemode)
 {
 	if (gamemode == 5)
 	{
-		ServerCommand("mp_ignore_round_win_conditions 1");
-		ServerCommand("say idididi");
-		
 		int NewSaxtonHale = GetRandomPlayer(CS_TEAM_T);
 		SaxtonHaleOldClass = class[NewSaxtonHale];
 		SaxtonHaleClient = NewSaxtonHale;
@@ -283,11 +281,26 @@ public Action SetupEnd(Handle timer, int gamemode)
 			
 		}
 		
-		int HP = GetTeamClientCount(CS_TEAM_T) * 575;
-		PrintToChatAll("%s \x09became Saxton Hale with %d HP!", name, HP);
+		int x = GetTeamClientCount(CS_TEAM_T);
+		int HP = (x*5)+((x^4)/4) + 2000;
+
+		char boss[32];
+		if (BossType == 0)
+		{
+			boss = "Saxton Hale";
+		}
+		else if (BossType == 1)
+		{
+			boss = "Bonk Boy";
+		}
+		else if (BossType == 2)
+		{
+			boss = "BLU Heavy Weapons Guy";
+		}
+
+		PrintToChatAll("%s \x09became %s with %d HP!", name, boss, HP);
 		
 		CreateTimer(0.1, RespawnSaxtonHale, NewSaxtonHale);
-		ServerCommand("mp_ignore_round_win_conditions 0");
 	}
 	
 	for (int i = 1; i < MAXPLAYERS; i++)
@@ -300,7 +313,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 		
 	}
 	
-	PrintToChatAll("\x06Setup is now over.");
+	PrintToChatAll("[CS:FO] \x10Setup is now over.");
 }
 
 public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
@@ -1057,9 +1070,10 @@ public Action RespawnSaxtonHale(Handle timer, any client)
 	healthtype[client] = GetTeamClientCount(CS_TEAM_CT) * 575;
 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.5);
 	SetEntityGravity(client, 0.25);
-	int Health = GetTeamClientCount(CS_TEAM_CT) * 575;
-	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), Health, 4, true);
-	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), Health, 4, true);
+	int x = GetTeamClientCount(CS_TEAM_T);
+	int HP = (x*5)+((x^4)/4) + 2000;
+	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), HP, 4, true);
+	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), HP, 4, true);
 	SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl");
 }
 
@@ -1432,6 +1446,8 @@ public Action DecayOverheal(Handle timer)
 	}
 }
 
+// Saxton Hale Code
+
 public Action ChooseTeam(client, const String:command[], argc)
 { 
 	if (sm_csf2_gamemode.IntValue != 5) return Plugin_Continue;
@@ -1456,4 +1472,30 @@ public Action ChooseTeam(client, const String:command[], argc)
 	} 
 
 	return Plugin_Continue; 
+}
+
+public Action ActivateRage()
+{
+	RageActive = true;
+	SaxtonHaleRage = 0;
+	switch(BossType)
+	{
+		case 0:
+		{
+			CreateTimer(10.0, DeactivateRage);
+		}
+		case 1:
+		{
+			CreateTimer(10.0, DeactivateRage);
+		}
+		case 2:
+		{
+			CreateTimer(10.0, DeactivateRage);
+		}
+	}
+}
+
+public Action DeactivateRage(Handle timer)
+{
+	RageActive = false;
 }
