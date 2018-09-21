@@ -5,9 +5,7 @@ Sourcemod 1.7+ required to compile.
 
 ---
 
-**UPDATE HAS NOT PUSHED YET**
-
-## Update v1.1.0
+## Update v1.1.0 **UPDATE HAS NOT PUSHED YET**
 Officially Released on 9/21 as v1.1.0
 
 ### Changelog 
