@@ -47,7 +47,10 @@ int SecondaryReserveAmmo[9] = {90, 32, 32, 32, 32, 200, 0, 80, 0};
 int SaxtonHaleClient = -1;
 classtype:SaxtonHaleOldClass = classtype:0;
 int SaxtonHaleRage = 0;
-int SaxtonHaleBossType = 0;
+int BossType = 0;
+bool RageActive = false;
+bool AnnouncedRage[4];
+
 /*
 ** 0 = Saxton Hale (Instakill when rage activated),
 ** 1 = Bonk Boy (Super Low Gravity when rage activated),
@@ -56,6 +59,7 @@ int SaxtonHaleBossType = 0;
 
 Handle sm_csf2_randomcrits; // Command for random crits
 ConVar sm_csf2_gamemode;
+ConVar sm_csf2_bots_can_be_saxtonhale;
 
 // do not remove below pls
 //Removed trigger_hurt(trigger_resupply_blue_2)
@@ -124,6 +128,7 @@ public void OnPluginStart()
 	sm_pp_minerad = CreateConVar( "sm_pp_minerad", "0", "override for explosion damage radius");
 	sm_csf2_randomcrits = CreateConVar("sm_csf2_randomcrits", "0", "Enables/disables random critical hits");
 	sm_csf2_gamemode = CreateConVar("sm_csf2_gamemode", "0", "0 = None, 1 = Deathmatch, 2 = Defusal");
+	sm_csf2_bots_can_be_saxtonhale = CreateConVar("sm_csf2_bots_can_be_saxtonhale", "1", "If non-zero, bots can be chosen to be Saxton Hale.");
 	
 	sm_csf2_gamemode.AddChangeHook(UpdateGamemode);
 	
@@ -248,6 +253,14 @@ public Action OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 		}
 	}
 	
+	if ((buttons & IN_USE) != 0)
+	{
+		if (sm_csf2_gamemode.IntValue == 5 && SaxtonHaleRage == 1000)
+		{
+			ActivateRage();
+		}
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -255,10 +268,33 @@ public Action SetupEnd(Handle timer, int gamemode)
 {
 	if (gamemode == 5)
 	{
-		ServerCommand("mp_ignore_round_win_conditions 1");
-		ServerCommand("say idididi");
+		for (int i = 1; i < MAXPLAYERS; i++)
+		{
+			if (IsClientConnected(i) && IsClientInGame(i))
+			{
+				if (GetClientTeam(i) == CS_TEAM_CT && i)
+				{
+					ChangeClientTeam(i, CS_TEAM_T);
+					CS_RespawnPlayer(i);
+				}
+			}
+			
+		}
 		
-		int NewSaxtonHale = GetRandomPlayer(CS_TEAM_T);
+		// Iterate twice, so it respawns after all players have moved
+		for (int i = 1; i < MAXPLAYERS; i++)
+		{
+			if (IsClientConnected(i) && IsClientInGame(i))
+			{
+				if (GetClientTeam(i) == CS_TEAM_T && !IsPlayerAlive(i))
+				{
+					CS_RespawnPlayer(i);
+				}
+			}
+			
+		}
+		
+		int NewSaxtonHale = GetRandomPlayer(CS_TEAM_T, sm_csf2_bots_can_be_saxtonhale.BoolValue);
 		SaxtonHaleOldClass = class[NewSaxtonHale];
 		SaxtonHaleClient = NewSaxtonHale;
 		ChangeClientTeam(NewSaxtonHale, CS_TEAM_CT);
@@ -270,24 +306,26 @@ public Action SetupEnd(Handle timer, int gamemode)
 		char name[64];
 		GetClientName(NewSaxtonHale, name, 64);
 		
-		for (int i = 1; i < MAXPLAYERS; i++)
+		float x = float(GetTeamClientCount(CS_TEAM_T) + GetTeamClientCount(CS_TEAM_CT));
+		int HP = RoundFloat((x*16.0)+(Pow(x, 4.0)/5.0) + 2000.0);
+
+		char boss[32];
+		if (BossType == 0)
 		{
-			if (IsClientConnected(i) && IsClientInGame(i))
-			{
-				if (GetClientTeam(i) == CS_TEAM_CT && i != NewSaxtonHale)
-				{
-					ChangeClientTeam(i, CS_TEAM_T);
-					CS_RespawnPlayer(i);
-				}
-			}
-			
+			boss = "Saxton Hale";
 		}
-		
-		int HP = GetTeamClientCount(CS_TEAM_T) * 575;
-		PrintToChatAll("%s \x09became Saxton Hale with %d HP!", name, HP);
+		else if (BossType == 1) // TODO: Add new bosses soon
+		{
+			boss = "Bonk Boy";
+		}
+		else if (BossType == 2)
+		{
+			boss = "BLU Heavy Weapons Guy";
+		}
+
+		PrintToChatAll("%s \x09became %s with %d HP!", name, boss, HP);
 		
 		CreateTimer(0.1, RespawnSaxtonHale, NewSaxtonHale);
-		ServerCommand("mp_ignore_round_win_conditions 0");
 	}
 	
 	for (int i = 1; i < MAXPLAYERS; i++)
@@ -300,7 +338,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 		
 	}
 	
-	PrintToChatAll("\x06Setup is now over.");
+	PrintToChatAll("[CS:FO] \x10Setup is now over.");
 }
 
 public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
@@ -319,8 +357,10 @@ public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
 		CreateTimer(15.0, SetupEnd, sm_csf2_gamemode.IntValue);
 	}
 	
-	if (SaxtonHaleOldClass != classtype:0) class[SaxtonHaleClient] = SaxtonHaleOldClass;
+	if (SaxtonHaleOldClass != classtype:0 && SaxtonHaleClient > 0) class[SaxtonHaleClient] = SaxtonHaleOldClass;
 	SaxtonHaleClient = -1;
+	SaxtonHaleRage = 0;
+	AnnouncedRage[0] = false;
 	
 	ServerCommand("exec csfortress2_script");	
 	ShowGamemodeMessage(sm_csf2_gamemode);
@@ -375,7 +415,7 @@ public Action HurtTracker(Handle event,const String:name[],bool dontBroadcast)
 	damagedonetotal[attacker] += damagedone;
 	//clientIsShooting[attacker] = true;
 	
-	if (!IsClientConnected(attacker) && !IsClientInGame(attacker) && client > 0)
+	if (attacker < 1 && !IsClientConnected(attacker) && !IsClientInGame(attacker))
 	{
 		PrintToConsole(client, "DEBUG: Took damage by world.");
 	}
@@ -481,6 +521,19 @@ public Action KillReward(Handle:event,const String:name[],bool:dontBroadcast)
 	GetClientAbsOrigin(client, pos);
 	DropAmmo(pos);
 	
+	if (sm_csf2_gamemode.IntValue == 5)
+	{
+		if (GetClientTeam(client) == CS_TEAM_CT && (attacker == 0 || GetClientTeam(attacker) == CS_TEAM_T))
+		{
+			CS_TerminateRound(10.0, CSRoundEnd_TerroristWin);
+		}
+		else if (GetClientTeam(client) == CS_TEAM_T && (attacker == 0 || GetClientTeam(attacker) == CS_TEAM_CT))
+		{
+			if (GetAliveTeamCount(CS_TEAM_T) < 1)
+				CS_TerminateRound(10.0, CSRoundEnd_CTWin);
+		}
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -510,10 +563,55 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	decl String:sClassname[64];
 	GetEdictClassname(inflictor, sClassname, sizeof(sClassname));
 	
-	if (sm_csf2_gamemode.IntValue == 5 && GetClientTeam(attacker) == CS_TEAM_CT)
+	if (sm_csf2_gamemode.IntValue == 5)
 	{
-		fDamage = 100.0;
-		changed = true;
+		if (!IsClientConnected(victim)) return Plugin_Continue;
+		if (GetClientTeam(victim) == CS_TEAM_T && GetClientTeam(attacker) == CS_TEAM_CT)
+		{
+			int primaryWeapon = GetPlayerWeaponSlot(victim, 0);
+			int secondaryWeapon = GetPlayerWeaponSlot(victim, 1);
+			int armorValue = GetEntProp(victim, Prop_Send, "m_ArmorValue");
+			if (armorValue + 50 > 150) armorValue = 100;
+			SetEntProp(victim, Prop_Send, "m_ArmorValue", armorValue + 50);
+			
+			if (primaryWeapon != -1)
+			{
+				int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
+				SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + (PrimaryReserveAmmo[class[victim] - 1]));
+			}
+			
+			if (secondaryWeapon != -1)
+			{
+				int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
+				SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (SecondaryReserveAmmo[class[victim] - 1]));
+			}
+		}
+		else if (GetClientTeam(victim) == CS_TEAM_CT && GetClientTeam(attacker) == CS_TEAM_T)
+		{
+			if (!RageActive)
+			{
+				int AddRage = RoundFloat(fDamage);
+				SaxtonHaleRage += AddRage;
+				if (SaxtonHaleRage > 1250) PrintToChat(SaxtonHaleClient, "[CS:FO] \x05Rage is 25% filled.");
+				if (SaxtonHaleRage > 2500) PrintToChatAll("[CS:FO] \x05Rage is 50% filled.");
+				if (SaxtonHaleRage > 3750) PrintToChat(SaxtonHaleClient, "[CS:FO] \x05Rage is 75% filled.");
+				if (SaxtonHaleRage > 5000)
+				{
+					SaxtonHaleRage = 5000;
+					PrintToChat(SaxtonHaleClient, "[CS:FO] \x06Rage is now Ready! \x05Press +USE \x01(Default: E) \x05to activate.");
+					if (IsFakeClient(SaxtonHaleClient))
+					{
+						ActivateRage();
+					}
+				}
+			}
+		}
+		
+		if (IsClientConnected(attacker) && GetClientTeam(attacker) == CS_TEAM_CT && RageActive && BossType == 0)
+		{
+			fDamage = 1000.0;
+			changed = true;
+		}
 	}
 	
 	if (damagetype == DMG_FALL) // Reduce Fall Damage
@@ -742,6 +840,8 @@ public Action WeaponFire(Handle:event,const String:name[],bool:dontBroadcast)
 	int client = GetClientOfUserId(client_id);
 	char weapon[128]; 
 	
+	if (!IsClientConnected(client) || !IsClientInGame(client)) return Plugin_Continue;
+	
 	if (class[client] == demoman || class[client] == soldier)
 	{
 		GetEventString(event, "weapon", weapon, 128);
@@ -761,9 +861,11 @@ public Action WeaponFire(Handle:event,const String:name[],bool:dontBroadcast)
 	if (class[client] == medic)
 	{
 		int primaryWeapon = GetPlayerWeaponSlot(client, 0);
-		SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", 1200);
+		if (Entity_IsValid(primaryWeapon))
+			SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", 1200);
 	}
 	
+	return Plugin_Continue;
 }
 
 public Action CreateFlames(int client)
@@ -1054,12 +1156,13 @@ public Action RespawnHeavy(Handle timer, any client)
 
 public Action RespawnSaxtonHale(Handle timer, any client)
 {
-	healthtype[client] = GetTeamClientCount(CS_TEAM_CT) * 575;
 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.5);
-	SetEntityGravity(client, 0.25);
-	int Health = GetTeamClientCount(CS_TEAM_CT) * 575;
-	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), Health, 4, true);
-	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), Health, 4, true);
+	SetEntityGravity(client, 0.7);
+	float x = float(GetTeamClientCount(CS_TEAM_T) + GetTeamClientCount(CS_TEAM_CT));
+	int HP = RoundFloat((x*16.0)+(Pow(x, 4.0)/5.0) + 2000.0);
+	healthtype[client] = HP;
+	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), HP, 4, true);
+	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), HP, 4, true);
 	SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl");
 }
 
@@ -1091,7 +1194,7 @@ public Action OnClientCommand(int client, int args)
 
 public void about(int client, int args)
 {
-	CPrintToChat(client, "{lightgreen}Counter-Strike: Fortress Offensive 1.00 by {default}Humanoid Sandvich Dispenser");
+	PrintToChat(client, "\x0FCounter-Strike: Fortress Offensive 1.00\x01 by Humanoid Sandvich Dispenser\nPlayer Models by Kuristaja");
 }
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
@@ -1099,6 +1202,34 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 	//char cmd[16];
 	//GetCmdArg(0, cmd, sizeof(cmd));
 	int args = 2;
+	if (StrEqual(sArgs, "beep beep lettuce"))
+	{
+		for (int i = 1; i < MAXPLAYERS; i++)
+		{
+			if (IsClientConnected(i) && IsClientInGame(i))
+			{
+				if (GetClientTeam(i) == CS_TEAM_CT && i)
+				{
+					ChangeClientTeam(i, CS_TEAM_T);
+					CS_RespawnPlayer(i);
+				}
+			}
+			
+		}
+		
+		// Iterate twice, so it respawns after all players have moved
+		for (int i = 1; i < MAXPLAYERS; i++)
+		{
+			if (IsClientConnected(i) && IsClientInGame(i))
+			{
+				if (GetClientTeam(i) == CS_TEAM_T && !IsPlayerAlive(i))
+				{
+					CS_RespawnPlayer(i);
+				}
+			}
+			
+		}
+	}
 	if (strcmp(sArgs, "changeclass", false) == 0)
 	{
 		Command_class(client, args);
@@ -1432,6 +1563,8 @@ public Action DecayOverheal(Handle timer)
 	}
 }
 
+// Saxton Hale Code
+
 public Action ChooseTeam(client, const String:command[], argc)
 { 
 	if (sm_csf2_gamemode.IntValue != 5) return Plugin_Continue;
@@ -1457,3 +1590,43 @@ public Action ChooseTeam(client, const String:command[], argc)
 
 	return Plugin_Continue; 
 }
+
+public Action ActivateRage()
+{
+	RageActive = true;
+	SaxtonHaleRage = 0;
+	PrintToChatAll("[CS:FO] \x06Rage has been activated!");
+	switch(BossType)
+	{
+		case 0:
+		{
+			CreateTimer(10.0, DeactivateRage);
+		}
+		case 1:
+		{
+			CreateTimer(10.0, DeactivateRage);
+		}
+		case 2:
+		{
+			CreateTimer(10.0, DeactivateRage);
+		}
+	}
+}
+
+public Action DeactivateRage(Handle timer)
+{
+	RageActive = false;
+	PrintToChat(SaxtonHaleClient, "[CS:FO] \x07Rage is now over.");
+}
+
+int GetAliveTeamCount(int team) 
+{ 
+    int number = 0; 
+    for (int i=1; i<=MaxClients; i++) 
+    { 
+    	if (!IsClientConnected(i)) continue;
+        if (IsPlayerAlive(i) && GetClientTeam(i) == team)  
+            number++; 
+    } 
+    return number; 
+}  
