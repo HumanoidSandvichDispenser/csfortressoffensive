@@ -16,20 +16,21 @@
 #include <csfo_engineer>
 #include <csfo_downloads>
 #include <csfo_gamemodes>
+#include <csfo_grenadelauncher>
 #include <colors>
 
 enum classtype
 {
-	none = 0,
-	scout = 1,
-	soldier = 2,
-	pyro = 3,
-	demoman = 4,
-	heavyweapons = 5,
-	engineer = 6,
-	medic = 7,
-	sniper = 8,
-	spy = 9,
+	none = 0, 
+	scout = 1, 
+	soldier = 2, 
+	pyro = 3, 
+	demoman = 4, 
+	heavyweapons = 5, 
+	engineer = 6, 
+	medic = 7, 
+	sniper = 8, 
+	spy = 9, 
 	saxtonhale = 10
 };
 
@@ -41,8 +42,9 @@ int damagedonetotal[MAXPLAYERS + 1] = 0;
 Handle batchTimer[MAXPLAYERS + 1];
 bool clientIsInBuyzone[MAXPLAYERS + 1] = false;
 bool firingFlamethrower[MAXPLAYERS + 1] = false;
-int PrimaryReserveAmmo[9] = {32, 20, 200, 16, 200, 32, 140, 30, 32};
-int SecondaryReserveAmmo[9] = {90, 32, 32, 32, 32, 200, 0, 80, 0};
+bool AltFireCooldown[MAXPLAYERS + 1] = false;
+int PrimaryReserveAmmo[9] =  { 32, 20, 200, 16, 200, 32, 140, 30, 32 };
+int SecondaryReserveAmmo[9] =  { 90, 32, 32, 32, 32, 200, 0, 80, 0 };
 
 int SaxtonHaleClient = -1;
 classtype:SaxtonHaleOldClass = classtype:0;
@@ -81,12 +83,12 @@ ConVar sm_csf2_bots_can_be_saxtonhale;
 #define class_sniper "Sniper"
 #define class_spy "Spy"
 
-public Plugin myinfo =
+public Plugin myinfo = 
 {
-	name = "Counter-Strike: Fortress Offensive",
-	author = PLUGIN_AUTHOR,
-	description = "The Famous & EXTREMELY BALANCED 2007 FPS Team Fortress 2, now in CS:GO!",
-	version = PLUGIN_VERSION,
+	name = "Counter-Strike: Fortress Offensive", 
+	author = PLUGIN_AUTHOR, 
+	description = "The Famous & EXTREMELY BALANCED 2007 FPS Team Fortress 2, now in CS:GO!", 
+	version = PLUGIN_VERSION, 
 	url = ""
 };
 
@@ -95,9 +97,9 @@ public void OnPluginStart()
 	
 	//heavyhealth = CreateConVar("sm_heavyhealth_amount", "300", "Heavy Weapons Guy's Health.", FCVAR_PLUGIN, true, 1.0, false, _);
 	g_Game = GetEngineVersion();
-	if(g_Game != Engine_CSGO)
+	if (g_Game != Engine_CSGO)
 	{
-		SetFailState("This plugin is for CSGO only.");	
+		SetFailState("This plugin is for CSGO only.");
 	}
 	
 	
@@ -109,8 +111,8 @@ public void OnPluginStart()
 	ServerCommand("mp_death_drop_gun 0");
 	ServerCommand("mp_weapons_allow_map_placed 0");
 	ServerCommand("ammo_grenade_limit_total 160");
-	ServerCommand("ammo_grenade_limit_default 16"); 
-	ServerCommand("ammo_grenade_limit_flashbang 16"); 
+	ServerCommand("ammo_grenade_limit_default 16");
+	ServerCommand("ammo_grenade_limit_flashbang 16");
 	ServerCommand("ammo_item_limit_healthshot 100");
 	
 	HookEvent("player_spawn", SpawnEvent);
@@ -123,57 +125,61 @@ public void OnPluginStart()
 	HookEvent("exit_buyzone", ExitBuyzone);
 	HookEvent("bomb_planted", BombPlanted);
 	
-	sm_pp_tripmines = CreateConVar( "sm_pp_tripmines", "99999", sm_pp_tripmines_desc);
-	sm_pp_minedmg = CreateConVar( "sm_pp_minedmg", "100", "damage (magnitude) of the tripmines");
-	sm_pp_minerad = CreateConVar( "sm_pp_minerad", "0", "override for explosion damage radius");
+	sm_pp_tripmines = CreateConVar("sm_pp_tripmines", "99999", sm_pp_tripmines_desc);
+	sm_pp_minedmg = CreateConVar("sm_pp_minedmg", "100", "damage (magnitude) of the tripmines");
+	sm_pp_minerad = CreateConVar("sm_pp_minerad", "0", "override for explosion damage radius");
 	sm_csf2_randomcrits = CreateConVar("sm_csf2_randomcrits", "0", "Enables/disables random critical hits");
 	sm_csf2_gamemode = CreateConVar("sm_csf2_gamemode", "0", "0 = None, 1 = Deathmatch, 2 = Defusal");
 	sm_csf2_bots_can_be_saxtonhale = CreateConVar("sm_csf2_bots_can_be_saxtonhale", "1", "If non-zero, bots can be chosen to be Saxton Hale.");
 	
 	sm_csf2_gamemode.AddChangeHook(UpdateGamemode);
 	
-	sm_pp_minefilter = CreateConVar( "sm_pp_minefilter", "2", "0 = detonate when laser touches anyone, 1 = enemies and owner only, 2 = enemies only");
-	HookEvent( "player_use", Event_PlayerUse );
-
-	HookConVarChange( sm_pp_tripmines, CVarChanged_tripmines );
-	HookConVarChange( sm_pp_minefilter, CVarChanged_minefilter );
+	sm_pp_minefilter = CreateConVar("sm_pp_minefilter", "2", "0 = detonate when laser touches anyone, 1 = enemies and owner only, 2 = enemies only");
+	HookEvent("player_use", Event_PlayerUse);
 	
-
-	minefilter = GetConVarInt( sm_pp_minefilter );
+	HookConVarChange(sm_pp_tripmines, CVarChanged_tripmines);
+	HookConVarChange(sm_pp_minefilter, CVarChanged_minefilter);
+	
+	
+	minefilter = GetConVarInt(sm_pp_minefilter);
 	
 	PrecacheModel(ROCKET_MODEL);
+	PrecacheModel(PIPE_MODEL);
+	PrecacheModel(STICKY_MODEL);
 	
 	
 	CreateTimer(1.0, dispense, _, TIMER_REPEAT);
 }
 
-public OnMapStart() 
+public OnMapStart()
 {
-
+	
 	// PRECACHE SOUNDS
 	PrecacheSound(SOUND_PLACE, true);
 	PrecacheSound(SOUND_ARMING, true);
 	PrecacheSound(SOUND_ARMED, true);
 	PrecacheSound(SOUND_DEFUSE, true);
 	PrecacheSound(SOUND_BUILD, true);
-
+	
 	// PRECACHE MODELS
 	PrecacheModel(MODEL_MINE);
 	PrecacheModel(MODEL_BEAM, true);
-
+	
 	//AddFileToDownloadsTable( "models/tripmine/tripmine.dx90.vtx" );
 	//AddFileToDownloadsTable( "models/tripmine/tripmine.mdl" );
 	//AddFileToDownloadsTable( "models/tripmine/tripmine.phy" );
 	//AddFileToDownloadsTable( "models/tripmine/tripmine.vvd" );
-
+	
 	//AddFileToDownloadsTable( "materials/models/tripmine/minetexture.vmt" );
 	//AddFileToDownloadsTable( "materials/models/tripmine/minetexture.vtf" );
-
+	
 	PrecacheSound("weapons/hegrenade/explode3.wav");
 	PrecacheSound("weapons/hegrenade/explode4.wav");
 	PrecacheSound("weapons/hegrenade/explode5.wav");
 	
 	PrecacheModel(ROCKET_MODEL, true);
+	PrecacheModel(PIPE_MODEL, true);
+	PrecacheModel(STICKY_MODEL, true);
 	PrecacheModel("models/props/de_mill/generatoronwheels.mdl", true);
 	PrecacheModel("models/props/cs_office/vending_machine.mdl", true);
 	PrecacheModel("models/props/coop_cementplant/coop_ammo_stash/coop_ammo_stash_full.mdl", true);
@@ -199,6 +205,8 @@ public OnMapStart()
 	PrecacheModel("models/player/custom_player/kuristaja/tf2/spy/spy_redv2.mdl", true);
 	
 	DownloadFiles();
+	
+	UpdateGameCVars(sm_csf2_gamemode.IntValue);
 }
 
 public Action dispense(Handle timer)
@@ -213,7 +221,7 @@ public Action dispense(Handle timer)
 				int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 				int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 				int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
-				if (armorValue + 50 > 150) armorValue = 100;
+				if (armorValue + 50 > 150)armorValue = 100;
 				SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + (isInDispenser[client] * 5));
 				
 				if (primaryWeapon != -1)
@@ -233,15 +241,24 @@ public Action dispense(Handle timer)
 	}
 }
 
-public Action OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon ) 
+public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
-	if( !IsValidClient(client) ) return Plugin_Continue;
-
-	if( (buttons & IN_USE) == 0 ) {
+	if (!IsValidClient(client))return Plugin_Continue;
 	
-		if( defuse_userid[client] && !defuse_cancelled[client] ) { // is defuse in progress?
+	char sWeapon[32];
+	GetClientWeapon(client, sWeapon, sizeof(sWeapon));
+	
+	if(StrEqual(sWeapon, "weapon_knife", false))
+	{
+		buttons &= ~IN_ATTACK2;
+		return Plugin_Changed;
+	}
+	
+	if ((buttons & IN_USE) == 0) {
+		
+		if (defuse_userid[client] && !defuse_cancelled[client]) {  // is defuse in progress?
 			defuse_cancelled[client] = true;
-			PrintHintText( client, "Defusal Cancelled." );
+			PrintHintText(client, "Defusal Cancelled.");
 		}
 	}
 	
@@ -255,13 +272,29 @@ public Action OnPlayerRunCmd( client, &buttons, &impulse, Float:vel[3], Float:an
 	
 	if ((buttons & IN_USE) != 0)
 	{
-		if (sm_csf2_gamemode.IntValue == 5 && SaxtonHaleRage == 1000)
+		if (sm_csf2_gamemode.IntValue == 5 && SaxtonHaleRage >= 5000)
 		{
 			ActivateRage();
 		}
 	}
 	
+	if (buttons & IN_ATTACK2)
+	{
+		if (AltFireCooldown[client]) return Plugin_Continue;
+		if (class[client] == demoman) 
+		{
+			DetonateStickies(client);
+		}
+		AltFireCooldown[client] = true;
+		CreateTimer(1.0, RemoveAltFireCooldown, client);
+	}
+	
 	return Plugin_Continue;
+}
+
+public Action RemoveAltFireCooldown(Handle timer, int client)
+{
+	AltFireCooldown[client] = false;
 }
 
 public Action SetupEnd(Handle timer, int gamemode)
@@ -307,8 +340,8 @@ public Action SetupEnd(Handle timer, int gamemode)
 		GetClientName(NewSaxtonHale, name, 64);
 		
 		float x = float(GetTeamClientCount(CS_TEAM_T) + GetTeamClientCount(CS_TEAM_CT));
-		int HP = RoundFloat((x*16.0)+(Pow(x, 4.0)/5.0) + 2000.0);
-
+		int HP = RoundFloat((x * 768.0) + (Pow(x, 4.0) / 32.0) + 2000.0);
+		
 		char boss[32];
 		if (BossType == 0)
 		{
@@ -322,7 +355,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 		{
 			boss = "BLU Heavy Weapons Guy";
 		}
-
+		
 		PrintToChatAll("%s \x09became %s with %d HP!", name, boss, HP);
 		
 		CreateTimer(0.1, RespawnSaxtonHale, NewSaxtonHale);
@@ -332,8 +365,8 @@ public Action SetupEnd(Handle timer, int gamemode)
 	{
 		if (IsClientConnected(i) && IsClientInGame(i))
 		{
-			if (GetClientTeam(i) == CS_TEAM_T) SetEntityMoveType(i, MOVETYPE_WALK);	
-			else if (gamemode == 5) SetEntityMoveType(i, MOVETYPE_WALK);
+			if (GetClientTeam(i) == CS_TEAM_T)SetEntityMoveType(i, MOVETYPE_WALK);
+			else if (gamemode == 5)SetEntityMoveType(i, MOVETYPE_WALK);
 		}
 		
 	}
@@ -341,7 +374,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 	PrintToChatAll("[CS:FO] \x10Setup is now over.");
 }
 
-public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
+public Action RoundStart(Handle event, const String:name[], bool:dontBroadcast)
 {
 	if (sm_csf2_gamemode.IntValue == 2 || sm_csf2_gamemode.IntValue == 5)
 	{
@@ -349,7 +382,7 @@ public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
 		{
 			if (IsClientConnected(i) && IsClientInGame(i))
 			{
-				if (GetClientTeam(i) == CS_TEAM_T || sm_csf2_gamemode.IntValue == 5) SetEntityMoveType(i, MOVETYPE_NONE);	
+				if (GetClientTeam(i) == CS_TEAM_T || sm_csf2_gamemode.IntValue == 5)SetEntityMoveType(i, MOVETYPE_NONE);
 				
 			}
 		}
@@ -357,12 +390,15 @@ public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
 		CreateTimer(15.0, SetupEnd, sm_csf2_gamemode.IntValue);
 	}
 	
-	if (SaxtonHaleOldClass != classtype:0 && SaxtonHaleClient > 0) class[SaxtonHaleClient] = SaxtonHaleOldClass;
+	if (SaxtonHaleOldClass != classtype:0 && SaxtonHaleClient > 0)class[SaxtonHaleClient] = SaxtonHaleOldClass;
 	SaxtonHaleClient = -1;
 	SaxtonHaleRage = 0;
 	AnnouncedRage[0] = false;
+	AnnouncedRage[1] = false;
+	AnnouncedRage[2] = false;
+	AnnouncedRage[3] = false;
 	
-	ServerCommand("exec csfortress2_script");	
+	ServerCommand("exec csfortress2_script");
 	ShowGamemodeMessage(sm_csf2_gamemode);
 	
 	CreateTimer(0.25, DecayOverheal, _, TIMER_REPEAT);
@@ -375,32 +411,32 @@ public Action RoundStart(Handle event,const String:name[],bool:dontBroadcast)
 	}
 	dispenserIndex = 0;
 	mine_counter = 0;
-	explosion_sound_enable=true;
+	explosion_sound_enable = true;
 	return Plugin_Continue;
 }
 
-public Action RoundPostStart(Handle event,const String:name[],bool dontBroadcast)
+public Action RoundPostStart(Handle event, const String:name[], bool dontBroadcast)
 {
 	ServerCommand("mp_buytime 0");
 	
 	return Plugin_Continue;
 }
 
-public Action EnterBuyzone(Handle event,const String:name[],bool dontBroadcast)
+public Action EnterBuyzone(Handle event, const String:name[], bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	clientIsInBuyzone[client] = true;
 	return Plugin_Continue;
 }
 
-public Action ExitBuyzone(Handle event,const String:name[],bool dontBroadcast)
+public Action ExitBuyzone(Handle event, const String:name[], bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	clientIsInBuyzone[client] = false;
 	return Plugin_Continue;
 }
 
-public Action HurtTracker(Handle event,const String:name[],bool dontBroadcast)
+public Action HurtTracker(Handle event, const String:name[], bool dontBroadcast)
 {
 	int damagedone = GetEventInt(event, "dmg_health");
 	/*
@@ -419,47 +455,47 @@ public Action HurtTracker(Handle event,const String:name[],bool dontBroadcast)
 	{
 		PrintToConsole(client, "DEBUG: Took damage by world.");
 	}
-
+	
 	if (client > 0 && attacker > 0) // checks to see if the client and attacker id is valid
 	{
-
+		
 		if (hitarea == 1) // checks the place where the user got shot (1 = hs)
 		{
 			SetHudTextParams(-1.0, 0.6, 2.0, 150, 220, 50, 205);
 			ShowHudText(attacker, 2, "-%d (CRITICAL HIT!)", damagedonetotal[attacker]);
-			if (IsPlayerAlive(client)) ClientCommand(attacker, "playgamesound training/bell_impact.wav");
+			if (IsPlayerAlive(client))ClientCommand(attacker, "playgamesound training/bell_impact.wav");
 		} else {
 			SetHudTextParams(-1.0, 0.6, 2.0, 200, 50, 50, 205);
 			ShowHudText(attacker, 2, "-%d", damagedonetotal[attacker]);
-			if (IsPlayerAlive(client)) ClientCommand(attacker, "playgamesound training/bell_normal.wav");
+			if (IsPlayerAlive(client))ClientCommand(attacker, "playgamesound training/bell_normal.wav");
 		}
 	}
 	
 	if (class[attacker] == pyro && class[client] != pyro)
 	{
-		if (clientIsBurning[client]) return;
+		if (clientIsBurning[client])return;
 		else
 		{
-			clientIsBurning[client] == true;
+			clientIsBurning[client] = true;
 			CreateTimer(5.0, burnDuration, client);
 		}
 	}
 	
-
+	
 	if (batchTimer[attacker] != INVALID_HANDLE && attacker > 0)
 	{
 		//KillTimer(batchTimer[attacker], true);
 		delete batchTimer[attacker];
 	}
 	
-	if (attacker > 0) batchTimer[attacker] = CreateTimer(1.5, resetTimer, attacker);
-
+	if (attacker > 0)batchTimer[attacker] = CreateTimer(1.5, resetTimer, attacker);
 	
-		
 	
-		
+	
+	
+	
 }
-	
+
 public Action resetTimer(Handle timer, any attacker)
 {
 	damagedonetotal[attacker] = 0;
@@ -480,7 +516,7 @@ public Action damageTextBatch(Handle timer, any client)
 
 public Action burnDuration(Handle timer, any client)
 {
-	clientIsBurning[client] == false;
+	clientIsBurning[client] = false;
 }
 
 public Action afterburn(Handle timer)
@@ -494,7 +530,7 @@ public Action afterburn(Handle timer)
 	}
 }
 
-public Action KillReward(Handle:event,const String:name[],bool:dontBroadcast)
+public Action KillReward(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	
 	
@@ -502,10 +538,12 @@ public Action KillReward(Handle:event,const String:name[],bool:dontBroadcast)
 	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	int assister = GetClientOfUserId(GetEventInt(event, "assister"));
 	
+	RemoveAllStickies(client);
+	
 	ClientCommand(attacker, "playgamesound ui/xp_milestone_01.wav");
 	
 	AddPoints(GetClientTeam(attacker), 2, sm_csf2_gamemode);
-	if (assister != 0 && IsClientConnected(assister) && IsClientInGame(assister) && GetClientTeam(assister) == GetClientTeam(attacker)) AddPoints(GetClientTeam(attacker), 1, sm_csf2_gamemode);
+	if (assister != 0 && IsClientConnected(assister) && IsClientInGame(assister) && GetClientTeam(assister) == GetClientTeam(attacker))AddPoints(GetClientTeam(attacker), 1, sm_csf2_gamemode);
 	
 	if (class[attacker] == spy)
 	{
@@ -550,13 +588,13 @@ public Action DropAmmo(float pos[3])
 
 public OnClientPutInServer(client)
 {
-    SDKHook(client, SDKHook_StartTouchPost, StartTouch);
-    SDKHook(client, SDKHook_EndTouch, EndTouch);
-    SDKHook(client, SDKHook_OnTakeDamage, Event_OnTakeDamage);
-    //SDKHook(client, SDKHook_FireBulletsPost, FireBulletsHook);
+	SDKHook(client, SDKHook_StartTouchPost, StartTouch);
+	SDKHook(client, SDKHook_EndTouch, EndTouch);
+	SDKHook(client, SDKHook_OnTakeDamage, Event_OnTakeDamage);
+	//SDKHook(client, SDKHook_FireBulletsPost, FireBulletsHook);
 }
 
-public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, &damagetype, &bweapon, Float:damageForce[3], Float:damagePosition[3]) 
+public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, &damagetype, &bweapon, Float:damageForce[3], Float:damagePosition[3])
 {
 	bool changed = false;
 	float distance = Entity_GetDistance(attacker, victim);
@@ -565,13 +603,13 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	
 	if (sm_csf2_gamemode.IntValue == 5)
 	{
-		if (!IsClientConnected(victim)) return Plugin_Continue;
-		if (GetClientTeam(victim) == CS_TEAM_T && GetClientTeam(attacker) == CS_TEAM_CT)
+		if (!IsClientConnected(victim))return Plugin_Continue;
+		if (attacker != 0 && GetClientTeam(victim) == CS_TEAM_T && GetClientTeam(attacker) == CS_TEAM_CT)
 		{
 			int primaryWeapon = GetPlayerWeaponSlot(victim, 0);
 			int secondaryWeapon = GetPlayerWeaponSlot(victim, 1);
 			int armorValue = GetEntProp(victim, Prop_Send, "m_ArmorValue");
-			if (armorValue + 50 > 150) armorValue = 100;
+			if (armorValue + 50 > 150)armorValue = 100;
 			SetEntProp(victim, Prop_Send, "m_ArmorValue", armorValue + 50);
 			
 			if (primaryWeapon != -1)
@@ -586,17 +624,31 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 				SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (SecondaryReserveAmmo[class[victim] - 1]));
 			}
 		}
-		else if (GetClientTeam(victim) == CS_TEAM_CT && GetClientTeam(attacker) == CS_TEAM_T)
+		else if (attacker != 0 && GetClientTeam(victim) == CS_TEAM_CT && GetClientTeam(attacker) == CS_TEAM_T)
 		{
+			PrintCenterTextAll("Boss HP: %d / %d", GetClientHealth(SaxtonHaleClient), healthtype[SaxtonHaleClient]);
 			if (!RageActive)
 			{
 				int AddRage = RoundFloat(fDamage);
 				SaxtonHaleRage += AddRage;
-				if (SaxtonHaleRage > 1250) PrintToChat(SaxtonHaleClient, "[CS:FO] \x05Rage is 25% filled.");
-				if (SaxtonHaleRage > 2500) PrintToChatAll("[CS:FO] \x05Rage is 50% filled.");
-				if (SaxtonHaleRage > 3750) PrintToChat(SaxtonHaleClient, "[CS:FO] \x05Rage is 75% filled.");
-				if (SaxtonHaleRage > 5000)
+				if (SaxtonHaleRage > 1250 && !AnnouncedRage[0])
 				{
+					PrintToChat(SaxtonHaleClient, "[CS:FO] \x05Rage is 25\% filled.");
+					AnnouncedRage[0] = true;
+				}
+				if (SaxtonHaleRage > 2500 && !AnnouncedRage[1])
+				{
+					PrintToChatAll("[CS:FO] \x05Rage is 50\% filled.");
+					AnnouncedRage[1] = true;
+				}
+				if (SaxtonHaleRage > 3750 && !AnnouncedRage[2])
+				{
+					PrintToChat(SaxtonHaleClient, "[CS:FO] \x05Rage is 75\% filled.");
+					AnnouncedRage[2] = true;
+				}
+				if (SaxtonHaleRage > 5000 && !AnnouncedRage[3])
+				{
+					AnnouncedRage[3] = true;
 					SaxtonHaleRage = 5000;
 					PrintToChat(SaxtonHaleClient, "[CS:FO] \x06Rage is now Ready! \x05Press +USE \x01(Default: E) \x05to activate.");
 					if (IsFakeClient(SaxtonHaleClient))
@@ -607,9 +659,11 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 			}
 		}
 		
-		if (IsClientConnected(attacker) && GetClientTeam(attacker) == CS_TEAM_CT && RageActive && BossType == 0)
+		if (attacker != 0 && GetClientTeam(attacker) == CS_TEAM_CT && BossType == 0)
 		{
-			fDamage = 1000.0;
+			if (RageActive)
+				fDamage = 1000.0;
+			else fDamage = 50.0;
 			changed = true;
 		}
 	}
@@ -617,7 +671,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	if (damagetype == DMG_FALL) // Reduce Fall Damage
 	{
 		fDamage /= 4.0;
-		if (fDamage < 4.0) fDamage = 0.0;
+		if (fDamage < 4.0)fDamage = 0.0;
 		changed = true;
 	}
 	
@@ -685,24 +739,28 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	}
 	
 	//-------
-
-	if (victim > 0 && attacker > 0)	// make sure they are both valid entities
+	
+	if (victim > 0 && attacker > 0) // make sure they are both valid entities
 	{
-		if (class[attacker] == soldier) 
+		if (class[attacker] == soldier || class[attacker] == demoman)
 		{
 			if (GetClientTeam(attacker) != GetClientTeam(victim))
 			{
-				float ClientPos[3];
-				GetClientEyePosition(victim, ClientPos);
-				float dist = GetVectorDistance(damagePosition, ClientPos);
-
-				RJ_Jump(victim, dist, damagePosition, ClientPos, 0.75);
+				if (!IsValidEdict(bweapon)) // grenades and rockets are always invalid, since they are removed before damage is taken
+				{
+					float ClientPos[3];
+					GetClientEyePosition(victim, ClientPos);
+					float dist = GetVectorDistance(damagePosition, ClientPos);
+					
+					RJ_Jump(victim, dist, damagePosition, ClientPos, 0.7);
+				}
+				
 			}
 		}
 		
 		
 		
-		if(GetClientTeam(victim) == GetClientTeam(attacker) || GetClientTeam(victim) == 9)
+		if (GetClientTeam(victim) == GetClientTeam(attacker) || GetClientTeam(victim) == 9)
 		{
 			if (class[attacker] == medic)
 			{
@@ -710,7 +768,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 				iCurrentVal = GetEntProp(victim, Prop_Send, "m_iHealth");
 				MaxVal = GetEntData(victim, FindDataMapInfo(victim, "m_iMaxHealth"), 4);
 				iNewVal = RoundFloat(float(iCurrentVal) + 2);
-				if(iNewVal > MaxVal)
+				if (iNewVal > MaxVal)
 				{
 					iNewVal = MaxVal;
 				}
@@ -732,18 +790,18 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		changed = true;
 	}
 	
-	if (changed) return Plugin_Changed;
+	if (changed)return Plugin_Changed;
 	
 	return Plugin_Continue;
 }
 
 public StartTouch(int client, int entity)
-{	
+{
 	char entityclass[32];
 	char entityname[32];
 	GetEntityClassname(entity, entityclass, sizeof(entityclass));
 	Entity_GetName(entity, entityname, sizeof(entityname));
-
+	
 	if (StrEqual(entityname, "dispenser_2") || StrEqual(entityname, "dispenser_3"))
 	{
 		//isInDispenser[client] = true;
@@ -759,7 +817,7 @@ public StartTouch(int client, int entity)
 			int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 			int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 			int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
-			if (armorValue + 50 > 150) armorValue = 100;
+			if (armorValue + 50 > 150)armorValue = 100;
 			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + 50);
 			
 			if (primaryWeapon != -1)
@@ -775,13 +833,13 @@ public StartTouch(int client, int entity)
 			}
 		}
 	}
-
+	
 	if (StrEqual(entityclass, "prop_dynamic"))
 	{
 		
 		//PrintToChat(client, "DEBUG: resupplied"); 
-
-		switch(class[client])
+		
+		switch (class[client])
 		{
 			case pyro:
 			{
@@ -818,8 +876,8 @@ public StartTouch(int client, int entity)
 					GivePlayerItem(client, "weapon_flashbang");
 				}
 			}
-
-
+			
+			
 		}
 	}
 	
@@ -833,22 +891,24 @@ public EndTouch(int client, int entity)
 	
 }
 
-public Action WeaponFire(Handle:event,const String:name[],bool:dontBroadcast)
+public Action WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	
 	int client_id = GetEventInt(event, "userid");
 	int client = GetClientOfUserId(client_id);
-	char weapon[128]; 
+	char weapon[128];
 	
-	if (!IsClientConnected(client) || !IsClientInGame(client)) return Plugin_Continue;
+	if (!IsClientConnected(client) || !IsClientInGame(client))return Plugin_Continue;
 	
 	if (class[client] == demoman || class[client] == soldier)
 	{
 		GetEventString(event, "weapon", weapon, 128);
-	
+		
 		//if (StrEqual(weapon, "weapon_mag7")) PlaceMine(client);
 		//if (StrEqual(weapon, "weapon_mag7")) ClientCommand(client, "sm_mine");
-		if (StrEqual(weapon, "weapon_xm1014")) RocketStart(client);
+		if (StrEqual(weapon, "weapon_xm1014"))RocketStart(client);
+		if (StrEqual(weapon, "weapon_mag7"))PipeStart(client);
+		if (StrEqual(weapon, "weapon_deagle"))StickyStart(client);
 	}
 	
 	if (class[client] == pyro)
@@ -870,7 +930,7 @@ public Action WeaponFire(Handle:event,const String:name[],bool:dontBroadcast)
 
 public Action CreateFlames(int client)
 {
-
+	
 }
 
 public Action DestroyFlames(int client)
@@ -889,23 +949,23 @@ public Action Command_forceclass(int client, int args)
 	char arg[65];
 	GetCmdArg(1, arg, sizeof(arg));
 	
-
+	
 	decl String:arg2[9];
 	GetCmdArg(2, arg2, sizeof(arg2));
-
+	
 	
 	decl String:target_name[MAX_TARGET_LENGTH];
 	decl target_list[MAXPLAYERS], target_count, bool:tn_is_ml;
 	
 	if ((target_count = ProcessTargetString(
-	arg,
-	client,
-	target_list,
-	MAXPLAYERS,
-	COMMAND_FILTER_ALIVE,
-	target_name,
-	sizeof(target_name),
-	tn_is_ml)) <= 0)
+				arg, 
+				client, 
+				target_list, 
+				MAXPLAYERS, 
+				COMMAND_FILTER_ALIVE, 
+				target_name, 
+				sizeof(target_name), 
+				tn_is_ml)) <= 0)
 	{
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
@@ -915,7 +975,7 @@ public Action Command_forceclass(int client, int args)
 	
 }
 
-public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
+public Action SpawnEvent(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	int client_id = GetEventInt(event, "userid");
 	int client = GetClientOfUserId(client_id);
@@ -924,17 +984,17 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 	
 	if (sm_csf2_gamemode.IntValue == 2)
 	{
-		if (GetClientTeam(client) == CS_TEAM_T) GivePlayerItem(client, "weapon_c4");
+		if (GetClientTeam(client) == CS_TEAM_T)GivePlayerItem(client, "weapon_c4");
 	}
 	
-	if (IsFakeClient(client))
+	if (IsFakeClient(client) || class[client] == none)
 	{
-		if (ClassOnTeam(GetClientTeam(client), medic) < 1) class[client] = medic; // Medic is priority class
-		else if (ClassOnTeam(GetClientTeam(client), medic) == 1 && class[client] == medic) class[client] = medic; // If they are the only medic, they wont switch off.
+		if (ClassOnTeam(GetClientTeam(client), medic) < 1)class[client] = medic; // Medic is priority class
+		else if (ClassOnTeam(GetClientTeam(client), medic) == 1 && class[client] == medic)class[client] = medic; // If they are the only medic, they wont switch off.
 		else
 		{
 			int rndclass;
-
+			
 			if (ClassOnTeam(GetClientTeam(client), sniper) > 2) // Bots prefer not to have more than 2 snipers or spies on their team
 			{
 				do rndclass = GetRandomInt(1, 9); while (rndclass == 8);
@@ -952,13 +1012,13 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 		if (class[client] == none)
 		{
 			ForcePlayerSuicide(client);
-
+			
 		}
 	}
 	
 	Client_RemoveAllWeapons(client, "weapon_knife", true);
-
-	switch(class[client])
+	
+	switch (class[client])
 	{
 		
 		case scout:
@@ -969,8 +1029,8 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			CreateTimer(0.1, RespawnScout, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 125;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/scout/scout_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/scout/scout_redv2.mdl");
 			
 		}
 		
@@ -981,8 +1041,8 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			//GivePlayerItem(client, "weapon_sawedoff");
 			healthtype[client] = 200;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/soldier/soldier_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/soldier/soldier_redv2.mdl");
 		}
 		
 		case pyro:
@@ -1000,13 +1060,14 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/pyro/pyro_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/pyro/pyro_redv2.mdl");
 		}
 		
 		case demoman:
 		{
 			GivePlayerItem(client, "weapon_mag7");
+			GivePlayerItem(client, "weapon_deagle");
 			for (int i = 0; i < 16; i++)
 			{
 				GivePlayerItem(client, "weapon_hegrenade");
@@ -1016,8 +1077,8 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/demoman/demoman_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/demoman/demoman_redv2.mdl");
 		}
 		
 		
@@ -1029,8 +1090,8 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			CreateTimer(0.1, RespawnHeavy, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 300;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_redv2.mdl");
 		}
 		
 		case engineer:
@@ -1041,8 +1102,8 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			CreateTimer(0.1, RespawnLight, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 125;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/engineer/engineer_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/engineer/engineer_redv2.mdl");
 		}
 		
 		case medic:
@@ -1050,24 +1111,13 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			
 			GivePlayerItem(client, "weapon_bizon");
 			GivePlayerItem(client, "weapon_healthshot");
-			for (int i = 0; i < 8; i++)
-			{
-				GivePlayerItem(client, "weapon_hegrenade");
-				GivePlayerItem(client, "weapon_hegrenade");
-				GivePlayerItem(client, "weapon_hegrenade");
-				GivePlayerItem(client, "weapon_hegrenade");
-				GivePlayerItem(client, "weapon_hegrenade");
-				GivePlayerItem(client, "weapon_hegrenade");
-				GivePlayerItem(client, "weapon_hegrenade");
-				GivePlayerItem(client, "weapon_hegrenade");
-			}
 			
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/medic/medic_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/medic/medic_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/medic/medic_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/medic/medic_redv2.mdl");
 		}
 		
 		case sniper:
@@ -1080,8 +1130,8 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			CreateTimer(0.1, RespawnLight, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 125;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/sniper/sniper_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.mdl");
 		}
 		
 		case spy:
@@ -1102,8 +1152,8 @@ public Action SpawnEvent(Handle:event,const String:name[],bool:dontBroadcast)
 			CreateTimer(0.1, RespawnLight, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 125;
 			
-			if (GetClientTeam(client) == CS_TEAM_CT) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.mdl");
-			else if (GetClientTeam(client) == CS_TEAM_T) SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/spy/spy_redv2.mdl");
+			if (GetClientTeam(client) == CS_TEAM_CT)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.mdl");
+			else if (GetClientTeam(client) == CS_TEAM_T)SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/spy/spy_redv2.mdl");
 		}
 		
 		case saxtonhale:
@@ -1123,7 +1173,7 @@ public Action RespawnScout(Handle timer, any client)
 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.7);
 	SetEntityGravity(client, 0.55);
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 185, 4, true); // Overheal
-	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 125, 4, true);	   // Normal Health
+	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 125, 4, true); // Normal Health
 }
 
 public Action RespawnLight(Handle timer, any client)
@@ -1159,7 +1209,7 @@ public Action RespawnSaxtonHale(Handle timer, any client)
 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.5);
 	SetEntityGravity(client, 0.7);
 	float x = float(GetTeamClientCount(CS_TEAM_T) + GetTeamClientCount(CS_TEAM_CT));
-	int HP = RoundFloat((x*16.0)+(Pow(x, 4.0)/5.0) + 2000.0);
+	int HP = RoundFloat((x * 768.0) + (Pow(x, 4.0) / 32.0) + 2000.0);
 	healthtype[client] = HP;
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), HP, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), HP, 4, true);
@@ -1170,7 +1220,7 @@ public Action OnClientCommand(int client, int args)
 {
 	char cmd[16];
 	GetCmdArg(0, cmd, sizeof(cmd));
- 
+	
 	if (StrEqual(cmd, "sm_class"))
 	{
 		Command_class(client, args);
@@ -1182,8 +1232,8 @@ public Action OnClientCommand(int client, int args)
 		Command_class(client, args);
 		return Plugin_Handled;
 	}
- 
- 	if (StrEqual(cmd, "sm_csfo_about"))
+	
+	if (StrEqual(cmd, "sm_csfo_about"))
 	{
 		about(client, args);
 		return Plugin_Handled;
@@ -1318,7 +1368,7 @@ public void SetClass(client, args)
 {
 	Handle menu = CreateMenu(menuhandler, MenuAction_Select | MenuAction_End | MenuAction_DisplayItem);
 	SetMenuTitle(menu, "Class Selection Menu");
-
+	
 	AddMenuItem(menu, "class_scout", "Scout");
 	AddMenuItem(menu, "class_soldier", "Soldier");
 	AddMenuItem(menu, "class_pyro", "Pyro");
@@ -1328,7 +1378,7 @@ public void SetClass(client, args)
 	AddMenuItem(menu, "class_medic", "Medic");
 	AddMenuItem(menu, "class_sniper", "Sniper");
 	AddMenuItem(menu, "class_spy", "Spy");
-
+	
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
 
@@ -1341,10 +1391,10 @@ public menuhandler(Handle:menu, MenuAction:action, param1, param2)
 		case MenuAction_Select:
 		{
 			//param1 is client, param2 is item
-
+			
 			char item[64];
 			GetMenuItem(menu, param2, item, sizeof(item));
-
+			
 			if (StrEqual(item, "class_scout"))
 			{
 				ForcePlayerSuicide(param1);
@@ -1400,14 +1450,14 @@ public menuhandler(Handle:menu, MenuAction:action, param1, param2)
 				PrintToChat(param1, "You will respawn as Spy.");
 			}
 		}
-
+		
 		case MenuAction_End:
 		{
 			//param1 is MenuEnd reason, if canceled param2 is MenuCancel reason
 			CloseHandle(menu);
-
+			
 		}
-
+		
 		case MenuAction_DisplayItem:
 		{
 			
@@ -1448,7 +1498,7 @@ public menuhandler(Handle:menu, MenuAction:action, param1, param2)
 			}
 			*/
 		}
-
+		
 	}
 	return 0;
 }
@@ -1457,10 +1507,10 @@ public CreateBuildMenu(client)
 {
 	new Handle:menu = CreateMenu(buildmenu, MenuAction_Select | MenuAction_End | MenuAction_DisplayItem);
 	SetMenuTitle(menu, "Build Menu");
-
+	
 	AddMenuItem(menu, "item_sentrygun", "Sentry Gun", ITEMDRAW_DISABLED);
 	AddMenuItem(menu, "item_dispenser", "Dispenser");
-
+	
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
 
@@ -1471,23 +1521,23 @@ public buildmenu(Handle menu, MenuAction action, param1, param2)
 		case MenuAction_Select:
 		{
 			//param1 is client, param2 is item
-
+			
 			new String:item[64];
 			GetMenuItem(menu, param2, item, sizeof(item));
-
+			
 			if (StrEqual(item, "item_dispenser") && class[param1] == engineer)
 			{
 				BuildDispenser(param1);
 			}
 		}
-
+		
 		case MenuAction_End:
 		{
 			//param1 is MenuEnd reason, if canceled param2 is MenuCancel reason
 			CloseHandle(menu);
-
+			
 		}
-
+		
 	}
 }
 
@@ -1518,7 +1568,7 @@ public GetClientFlashbang(client)
 public OnClientDisconnect(client)
 {
 	class[client] = none;
-	DeletePlacedMines( client );
+	DeletePlacedMines(client);
 	SDKUnhook(client, SDKHook_StartTouchPost, StartTouch);
 	SDKUnhook(client, SDKHook_EndTouch, EndTouch);
 	SDKUnhook(client, SDKHook_OnTakeDamage, Event_OnTakeDamage);
@@ -1526,12 +1576,12 @@ public OnClientDisconnect(client)
 
 public Action OnShouldBotAttackPlayer(bot, player, &bool:result)
 {
-	if (result) return Plugin_Continue;
+	if (result)return Plugin_Continue;
 	
 	if (class[bot] == medic && GetClientHealth(player) < healthtype[player] * 1.25)
 	{
-		if (class[player] != medic) result = true;
-		else if (GetClientHealth(player) > healthtype[player]) result = true;
+		if (class[player] != medic)result = true;
+		else if (GetClientHealth(player) > healthtype[player])result = true;
 		return Plugin_Changed;
 	}
 	return Plugin_Continue;
@@ -1539,11 +1589,11 @@ public Action OnShouldBotAttackPlayer(bot, player, &bool:result)
 
 public int ClassOnTeam(int team, classtype:targetclass)
 {
-	if (GetTeamClientCount(team) == 0) return 0;
+	if (GetTeamClientCount(team) == 0)return 0;
 	int count = 0;
 	for (int i = 1; i < MAXPLAYERS; i++)
 	{
-		if (!IsClientConnected(i) || !IsClientInGame(i)) continue;
+		if (!IsClientConnected(i) || !IsClientInGame(i))continue;
 		if (GetClientTeam(i) == team && class[i] == targetclass)
 		{
 			count++;
@@ -1557,38 +1607,38 @@ public Action DecayOverheal(Handle timer)
 {
 	for (int i = 1; i < MAXPLAYERS; i++)
 	{
-		if (!IsClientConnected(i) || !IsClientInGame(i)) continue;
+		if (!IsClientConnected(i) || !IsClientInGame(i))continue;
 		int health = GetClientHealth(i);
-		if (health > healthtype[i]) SetEntData(i, FindDataMapInfo(i, "m_iHealth"), health - 1, 4, true);
+		if (health > healthtype[i])SetEntData(i, FindDataMapInfo(i, "m_iHealth"), health - 1, 4, true);
 	}
 }
 
 // Saxton Hale Code
 
 public Action ChooseTeam(client, const String:command[], argc)
-{ 
-	if (sm_csf2_gamemode.IntValue != 5) return Plugin_Continue;
-	if (client == 0) 
-    { 
-        return Plugin_Continue; 
-    } 
-
-	if (GetClientTeam(client) == CS_TEAM_T) 
-    {
+{
+	if (sm_csf2_gamemode.IntValue != 5)return Plugin_Continue;
+	if (client == 0)
+	{
+		return Plugin_Continue;
+	}
+	
+	if (GetClientTeam(client) == CS_TEAM_T)
+	{
 		if (SaxtonHaleClient != -1 && GetTeamClientCount(CS_TEAM_T) > 0 && SaxtonHaleClient != client)
 		{
-			PrintToChat(client, "There can only be 1 player on Terrorist side."); 
+			PrintToChat(client, "There can only be 1 player on Terrorist side.");
 			ChangeClientTeam(client, CS_TEAM_CT);
 			return Plugin_Handled;
 		}
 		if (SaxtonHaleClient == -1 && GetTeamClientCount(CS_TEAM_T) == 0)
 		{
-			ChangeClientTeam(client, CS_TEAM_CT); 
+			ChangeClientTeam(client, CS_TEAM_CT);
 			return Plugin_Handled;
 		}
-	} 
-
-	return Plugin_Continue; 
+	}
+	
+	return Plugin_Continue;
 }
 
 public Action ActivateRage()
@@ -1596,7 +1646,7 @@ public Action ActivateRage()
 	RageActive = true;
 	SaxtonHaleRage = 0;
 	PrintToChatAll("[CS:FO] \x06Rage has been activated!");
-	switch(BossType)
+	switch (BossType)
 	{
 		case 0:
 		{
@@ -1615,18 +1665,22 @@ public Action ActivateRage()
 
 public Action DeactivateRage(Handle timer)
 {
+	AnnouncedRage[0] = false;
+	AnnouncedRage[1] = false;
+	AnnouncedRage[2] = false;
+	AnnouncedRage[3] = false;
 	RageActive = false;
 	PrintToChat(SaxtonHaleClient, "[CS:FO] \x07Rage is now over.");
 }
 
-int GetAliveTeamCount(int team) 
-{ 
-    int number = 0; 
-    for (int i=1; i<=MaxClients; i++) 
-    { 
-    	if (!IsClientConnected(i)) continue;
-        if (IsPlayerAlive(i) && GetClientTeam(i) == team)  
-            number++; 
-    } 
-    return number; 
-}  
+int GetAliveTeamCount(int team)
+{
+	int number = 0;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientConnected(i))continue;
+		if (IsPlayerAlive(i) && GetClientTeam(i) == team)
+			number++;
+	}
+	return number;
+} 

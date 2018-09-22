@@ -14,6 +14,12 @@
 
 public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 {
+	int gamemode = StringToInt(newValue);
+	UpdateGameCVars(gamemode);
+}
+
+public void UpdateGameCVars(gamemode)
+{
 	ConVar ignorewinconditions = FindConVar("mp_ignore_round_win_conditions");
 	ConVar time_defuse = FindConVar("mp_roundtime_defuse");
 	ConVar time_hostage = FindConVar("mp_roundtime_hostage");
@@ -24,6 +30,8 @@ public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 	ConVar UseRespawnWaves = FindConVar("mp_use_respawn_waves");
 	ConVar TRespawnWaveTime = FindConVar("mp_respawnwavetime_t");
 	ConVar CTRespawnWaveTime = FindConVar("mp_respawnwavetime_ct");
+	ConVar TRespawnOnDeath = FindConVar("mp_respawn_on_death_t");
+	ConVar CTRespawnOnDeath = FindConVar("mp_respawn_on_death_ct");
 	ConVar TeamAutoBalance = FindConVar("mp_autoteambalance");
 	ConVar LimitTeams = FindConVar("mp_limitteams");
 	
@@ -33,13 +41,15 @@ public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 	TRespawnWaveTime.FloatValue = 10.0;
 	CTRespawnWaveTime.FloatValue = 10.0;
 	
-	int gamemode = StringToInt(newValue);
+	
 	switch(gamemode)
 	{
 		case 0: // None
 		{
 			PrintToChatAll("[CS:FO] Next Gamemode: None");
 			ignorewinconditions.BoolValue = true;
+			TRespawnOnDeath.BoolValue = true;
+			CTRespawnOnDeath.BoolValue = true;
 			time_defuse.FloatValue = 0.0;
 			time_hostage.FloatValue = 0.0;
 			time_generic.FloatValue = 60.0;
@@ -51,6 +61,8 @@ public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 			time_defuse.FloatValue = 0.0;
 			time_hostage.FloatValue = 0.0;
 			time_generic.FloatValue = 60.0;
+			TRespawnOnDeath.BoolValue = true;
+			CTRespawnOnDeath.BoolValue = true;
 		}
 		case 2: // Payload (CS Style)
 		{
@@ -60,6 +72,8 @@ public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 			time_hostage.FloatValue = 0.0;
 			time_generic.FloatValue = 0.0;
 			maxrounds.IntValue = 3;
+			TRespawnOnDeath.BoolValue = true;
+			CTRespawnOnDeath.BoolValue = true;
 		}
 		case 5: // Saxton Hale
 		{
@@ -68,6 +82,8 @@ public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 			ignorewinconditions.BoolValue = true;
 			UseRespawnWaves.BoolValue = false;
 			TeamAutoBalance.BoolValue = false;
+			TRespawnOnDeath.BoolValue = false;
+			CTRespawnOnDeath.BoolValue = false;
 			LimitTeams.IntValue = 0;
 			time_defuse.FloatValue = 0.0;
 			time_hostage.FloatValue = 0.0;

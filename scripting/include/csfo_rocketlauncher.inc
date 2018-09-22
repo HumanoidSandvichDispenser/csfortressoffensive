@@ -167,7 +167,7 @@ public Action:RocketStart(client)
 	new Float:InitialVec[3];
 	new Float:InitialAng[3];
 	SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", client);
-	SetEntPropFloat(ent, Prop_Send, "m_flModelScale", 0.4);
+	SetEntPropFloat(ent, Prop_Send, "m_flModelScale", 0.2);
 	GetClientEyeAngles(client, OwnerAng);
 	GetClientEyePosition(client, OwnerPos);	
 	TR_TraceRayFilter(OwnerPos, OwnerAng, MASK_SOLID, RayType_Infinite, FireEnt, ent);
