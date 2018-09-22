@@ -24,6 +24,8 @@ public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 	ConVar UseRespawnWaves = FindConVar("mp_use_respawn_waves");
 	ConVar TRespawnWaveTime = FindConVar("mp_respawnwavetime_t");
 	ConVar CTRespawnWaveTime = FindConVar("mp_respawnwavetime_ct");
+	ConVar TeamAutoBalance = FindConVar("mp_autoteambalance");
+	ConVar LimitTeams = FindConVar("mp_limitteams");
 	
 	halftime.BoolValue = true;
 	maxrounds.IntValue = 1;
@@ -34,33 +36,39 @@ public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 	int gamemode = StringToInt(newValue);
 	switch(gamemode)
 	{
-		case 0:
+		case 0: // None
 		{
+			PrintToChatAll("[CS:FO] Next Gamemode: None");
 			ignorewinconditions.BoolValue = true;
 			time_defuse.FloatValue = 0.0;
 			time_hostage.FloatValue = 0.0;
 			time_generic.FloatValue = 60.0;
 		}
-		case 1:
+		case 1: // DM
 		{
+			PrintToChatAll("[CS:FO] Next Gamemode: Deathmatch");
 			ignorewinconditions.BoolValue = true;
 			time_defuse.FloatValue = 0.0;
 			time_hostage.FloatValue = 0.0;
 			time_generic.FloatValue = 60.0;
 		}
-		case 2:
+		case 2: // Payload (CS Style)
 		{
+			PrintToChatAll("[CS:FO] Next Gamemode: CS Payload");
 			ignorewinconditions.BoolValue = false;
 			time_defuse.FloatValue = 4.5;
 			time_hostage.FloatValue = 0.0;
 			time_generic.FloatValue = 0.0;
 			maxrounds.IntValue = 3;
 		}
-		case 5:
+		case 5: // Saxton Hale
 		{
+			PrintToChatAll("[CS:FO] Next Gamemode: Saxton Hale");
 			maxrounds.IntValue = 4;
 			ignorewinconditions.BoolValue = true;
 			UseRespawnWaves.BoolValue = false;
+			TeamAutoBalance.BoolValue = false;
+			LimitTeams.IntValue = 0;
 			time_defuse.FloatValue = 0.0;
 			time_hostage.FloatValue = 0.0;
 			time_generic.FloatValue = 8.0;
@@ -140,12 +148,16 @@ public Action BombPlanted(Handle event, const String:name[], bool dontBroadcast)
 
 // Saxton Hale Code
 
-public int GetRandomPlayer(team) 
+public int GetRandomPlayer(team, bool botsCanBeSaxtonHale) 
 { 
 
     int clients[MAXPLAYERS + 1], clientCount;
     for (new i = 1; i <= MaxClients; i++) 
         if (IsClientInGame(i) && (GetClientTeam(i) == team)) 
-            clients[clientCount++] = i;
+        {
+       		if (botsCanBeSaxtonHale && IsFakeClient(i)) clients[clientCount++] = i;
+       		else if (!botsCanBeSaxtonHale && !IsFakeClient(i)) clients[clientCount++] = i;
+      	}
+            
     return (clientCount == 0) ? -1 : clients[GetRandomInt(0, clientCount-1)]; 
 }
