@@ -481,14 +481,16 @@ public Action HurtTracker(Handle event, const String:name[], bool dontBroadcast)
 		}
 	}
 	
-	
+
 	if (batchTimer[attacker] != INVALID_HANDLE && attacker > 0)
 	{
 		//KillTimer(batchTimer[attacker], true);
 		delete batchTimer[attacker];
 	}
 	
-	if (attacker > 0)batchTimer[attacker] = CreateTimer(1.5, resetTimer, attacker);
+	if (attacker > 0)batchTimer[attacker] = CreateTimer(2.5, resetTimer, attacker);
+	
+	
 	
 	
 	
@@ -630,6 +632,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 			if (!RageActive)
 			{
 				int AddRage = RoundFloat(fDamage);
+				CS_SetClientContributionScore(attacker, CS_GetClientContributionScore(attacker) + AddRage);
 				SaxtonHaleRage += AddRage;
 				if (SaxtonHaleRage > 1250 && !AnnouncedRage[0])
 				{
