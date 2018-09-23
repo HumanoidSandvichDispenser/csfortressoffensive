@@ -10,8 +10,8 @@
 #define BULLET_SPEED			1000.0
 #define MAX_DISTANCE			160.0
 #define JUMP_FORCE_UP			8.0
-#define JUMP_FORCE_FORW			1.20
-#define JUMP_FORCE_BACK			1.25
+#define JUMP_FORCE_FORW			1.70
+#define JUMP_FORCE_BACK			1.55
 #define JUMP_FORCE_MAIN			270.0
 #define RUN_FORCE_MAIN			0.8
 
@@ -167,7 +167,7 @@ public Action:RocketStart(client)
 	new Float:InitialVec[3];
 	new Float:InitialAng[3];
 	SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", client);
-	SetEntPropFloat(ent, Prop_Send, "m_flModelScale", 0.2);
+	SetEntProp(ent, Prop_Send, "m_ScaleType", 0);
 	GetClientEyeAngles(client, OwnerAng);
 	GetClientEyePosition(client, OwnerPos);	
 	TR_TraceRayFilter(OwnerPos, OwnerAng, MASK_SOLID, RayType_Infinite, FireEnt, ent);
@@ -322,58 +322,88 @@ public void RJ_Jump(int shooter, float distance, float clientORG[3], float explo
 		GetEntPropVector(shooter, Prop_Data, "m_vecVelocity", clientVelocity);
 		
 		ScaleVector(velocity, JUMP_FORCE_MAIN);
+		ScaleVector(clientVelocity, 0.1); // I changed this so that your new velocity is less dependant upon your current velocity, like in TF2.
 		AddVectors(velocity, clientVelocity, velocity);
 			
 		clientVelocity[2] = 0.0;
 		velocity[2] = 0.0;
 		
-		if (clientVelocity[0] < 0) {
-		    if (explodeORG[0] > clientORG[0]) {
+		float distances[3];
+		MakeVectorFromPoints(clientORG, explodeORG, distances);
+		float xy_distance = SquareRoot(Pow(distances[0], 2.0) + Pow(distances[1], 2.0)); // Get the distance for only x and y
+		
+		if (clientVelocity[0] < 0) 
+		{
+		    if (explodeORG[0] > clientORG[0])
+			{
 				ScaleVector(velocity, JUMP_FORCE_FORW * scale);
-				
-		    } else {
+			}
+			else
+			{
 				ScaleVector(velocity, JUMP_FORCE_BACK * scale);
-		    }
+			}
+		    
+		    
 		} else {
-		    if (explodeORG[0] < clientORG[0]) {
+		    if (explodeORG[0] < clientORG[0])
+			{
 				ScaleVector(velocity, JUMP_FORCE_FORW * scale);
-				
-		    } else {
+			}
+			else
+			{
 				ScaleVector(velocity, JUMP_FORCE_BACK * scale);
-		    }
+			}
+		    
 		}
 		
 		
-		if (clientVelocity[1] < 0) {
-			
+		if (clientVelocity[1] < 0) 
+		{
 		    if (explodeORG[1] > clientORG[1])
+			{
 				ScaleVector(velocity, JUMP_FORCE_FORW * scale);
-		    else
+			}
+			else
+			{
 				ScaleVector(velocity, JUMP_FORCE_BACK * scale);
-				
+			}
+		    
+		    
 		} else {
-			
 		    if (explodeORG[1] < clientORG[1])
+			{
 				ScaleVector(velocity, JUMP_FORCE_FORW * scale);
-		    else
+			}
+			else
+			{
 				ScaleVector(velocity, JUMP_FORCE_BACK * scale);
-				
+			}
 		}
 		
 		if((GetEntityFlags(shooter) & FL_ONGROUND))
-			ScaleVector(velocity, RUN_FORCE_MAIN);
+			ScaleVector(velocity, 0.4);
+		else ScaleVector(velocity, 1.4);
 
-
-		if(distance > 37.0)
+		if (xy_distance > 37.0)
 		{
-			if(velocity[2] > 0.0)
+			if(velocity[2] < 16.0)
 				velocity[2] = 1000.0 + (JUMP_FORCE_UP * (MAX_DISTANCE - distance)  * scale);
 			else
-				velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance) * scale);	
-		} else {
+				velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance) * scale) / 1.37;	
+				
+			ScaleVector(velocity, 1.2);
+			velocity[2] /= 4;
 			
-			velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance) * scale) / 1.37;	
+			if((GetEntityFlags(shooter) & FL_ONGROUND)) velocity[2] *= 0.25;
+		} 
+		else
+		{
+			velocity[2] = velocity[2] + (JUMP_FORCE_UP * (MAX_DISTANCE - distance) * scale);	
+			if((GetEntityFlags(shooter) & FL_ONGROUND)) velocity[2] *= 0.35;
+			else velocity[2] *= 1.2;
 		}
+		
+		if (distances[2] < 20 && distances[2] > -10) velocity[2] /= 4;
 		
 		if(down)
 			velocity[2] *= -1;

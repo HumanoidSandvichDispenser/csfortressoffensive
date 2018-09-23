@@ -43,6 +43,8 @@ Handle batchTimer[MAXPLAYERS + 1];
 bool clientIsInBuyzone[MAXPLAYERS + 1] = false;
 bool firingFlamethrower[MAXPLAYERS + 1] = false;
 bool AltFireCooldown[MAXPLAYERS + 1] = false;
+bool CritBoosted[MAXPLAYERS + 1] = false;
+
 int PrimaryReserveAmmo[9] =  { 32, 20, 200, 16, 200, 32, 140, 30, 32 };
 int SecondaryReserveAmmo[9] =  { 90, 32, 32, 32, 32, 200, 0, 80, 0 };
 
@@ -340,7 +342,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 		GetClientName(NewSaxtonHale, name, 64);
 		
 		float x = float(GetTeamClientCount(CS_TEAM_T) + GetTeamClientCount(CS_TEAM_CT));
-		int HP = RoundFloat((x * 768.0) + (Pow(x, 4.0) / 32.0) + 2000.0);
+		int HP = RoundFloat((x * 750.0) + (Pow(x, 4.0) / 32.0) + 2000.0);
 		
 		char boss[32];
 		if (BossType == 0)
@@ -660,6 +662,12 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 					}
 				}
 			}
+		}
+		
+		if (GetAliveTeamCount(CS_TEAM_T) < 4 && GetClientTeam(attacker) == CS_TEAM_T)
+		{
+			fDamage *= 3.0;
+			changed = true;
 		}
 		
 		if (attacker != 0 && GetClientTeam(attacker) == CS_TEAM_CT && BossType == 0)
@@ -1212,7 +1220,7 @@ public Action RespawnSaxtonHale(Handle timer, any client)
 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.5);
 	SetEntityGravity(client, 0.7);
 	float x = float(GetTeamClientCount(CS_TEAM_T) + GetTeamClientCount(CS_TEAM_CT));
-	int HP = RoundFloat((x * 768.0) + (Pow(x, 4.0) / 32.0) + 2000.0);
+	int HP = RoundFloat((x * 750.0) + (Pow(x, 4.0) / 32.0) + 2000.0);
 	healthtype[client] = HP;
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), HP, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), HP, 4, true);
@@ -1686,4 +1694,32 @@ int GetAliveTeamCount(int team)
 			number++;
 	}
 	return number;
-} 
+}
+
+public CritBoost(int client)
+{
+	CritBoosted[client] = true;
+	int primaryWeapon = GetPlayerWeaponSlot(client, 0);
+	int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
+	int meleeWeapon = GetPlayerWeaponSlot(client, 2);
+	
+	if (primaryWeapon != -1)
+	{
+		if (GetClientTeam(client) == CS_TEAM_CT) SetEntityRenderColor(primaryWeapon, 150, 220, 255);
+	}
+	
+	if (secondaryWeapon != -1)
+	{
+		
+	}
+	
+	if (meleeWeapon != -1)
+	{
+		
+	}
+}
+
+public RemoveCritBoost(int client)
+{
+
+}
