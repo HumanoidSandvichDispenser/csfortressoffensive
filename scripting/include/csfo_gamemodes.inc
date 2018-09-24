@@ -2,7 +2,7 @@
 **
 */
 #if defined _csfo_gamemodes_included
- #endinput
+#endinput
 #endif
 #define _csfo_gamemodes_included
 
@@ -42,7 +42,7 @@ public void UpdateGameCVars(gamemode)
 	CTRespawnWaveTime.FloatValue = 10.0;
 	
 	
-	switch(gamemode)
+	switch (gamemode)
 	{
 		case 0: // None
 		{
@@ -94,7 +94,7 @@ public void UpdateGameCVars(gamemode)
 
 public Action AddPoints(int team, int points, ConVar GMConVar)
 {
-	if (GMConVar.IntValue != 1) return Plugin_Handled;
+	if (GMConVar.IntValue != 1)return Plugin_Handled;
 	
 	SetTeamScore(team, GetTeamScore(team) + points);
 	//char teamname[32];
@@ -136,7 +136,7 @@ public Action ShowGamemodeMessage(ConVar GMConVar)
 	{
 		for (int i = 1; i < MAXPLAYERS; i++)
 		{
-			if (!IsClientInGame(i)) continue;
+			if (!IsClientInGame(i))continue;
 			if (GetClientTeam(i) == CS_TEAM_CT)
 			{
 				PrintToChat(i, "[CS:FO] \x06CS Payload - BLU TEAM (Defending): \x05Prevent the bomb from being planted.");
@@ -164,16 +164,16 @@ public Action BombPlanted(Handle event, const String:name[], bool dontBroadcast)
 
 // Saxton Hale Code
 
-public int GetRandomPlayer(team, bool botsCanBeSaxtonHale) 
-{ 
-
-    int clients[MAXPLAYERS + 1], clientCount;
-    for (new i = 1; i <= MaxClients; i++) 
-        if (IsClientInGame(i) && (GetClientTeam(i) == team)) 
-        {
-       		if (botsCanBeSaxtonHale && IsFakeClient(i)) clients[clientCount++] = i;
-       		else if (!botsCanBeSaxtonHale && !IsFakeClient(i)) clients[clientCount++] = i;
-      	}
-            
-    return (clientCount == 0) ? -1 : clients[GetRandomInt(0, clientCount-1)]; 
-}
+public int GetRandomPlayer(team, bool botsCanBeSaxtonHale)
+{
+	
+	int clients[MAXPLAYERS + 1], clientCount;
+	for (new i = 1; i <= MaxClients; i++)
+	if (IsClientInGame(i) && (GetClientTeam(i) == team))
+	{
+		if (botsCanBeSaxtonHale && IsFakeClient(i))clients[clientCount++] = i;
+		else if (!botsCanBeSaxtonHale && !IsFakeClient(i))clients[clientCount++] = i;
+	}
+	
+	return (clientCount == 0) ? -1 : clients[GetRandomInt(0, clientCount - 1)];
+} 
