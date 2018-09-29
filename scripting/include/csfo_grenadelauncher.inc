@@ -24,7 +24,7 @@
 #define ADD_OUTPUT "OnUser1 !self:Kill::1.5:1"
 
 int PipeIndex[64] = 0;
-bool PipeBombTouch[64];
+//bool PipeBombTouch[64];
 
 public Action:PipeStart(client)
 {

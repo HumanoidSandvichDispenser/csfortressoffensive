@@ -34,16 +34,24 @@ enum classtype
 	saxtonhale = 10
 };
 
+#define CSF2_BURNING 1 << 0
+#define CSF2_HEALING 1 << 1
+#define CSF2_BEINGHEALED 1 << 2
+#define CSF2_DISGUISED 1 << 3
+#define CSF2_CRITBOOSTED 1 << 4
+#define CSF2_FIRINGFLAMETHROWER 1 << 5
+#define CSF2_UBERCHARGED 1 << 6
+
+int clientFlags[MAXPLAYERS + 1] = 0;
+
 EngineVersion g_Game;
 classtype class[MAXPLAYERS + 1] = none;
 int healthtype[MAXPLAYERS + 1] = 100;
-bool clientIsBurning[MAXPLAYERS + 1] = false;
 int damagedonetotal[MAXPLAYERS + 1] = 0;
 Handle batchTimer[MAXPLAYERS + 1];
 bool clientIsInBuyzone[MAXPLAYERS + 1] = false;
-bool firingFlamethrower[MAXPLAYERS + 1] = false;
 bool AltFireCooldown[MAXPLAYERS + 1] = false;
-bool CritBoosted[MAXPLAYERS + 1] = false;
+int pyroAttacker[MAXPLAYERS + 1] = 0;
 
 int PrimaryReserveAmmo[9] =  { 32, 20, 200, 16, 200, 32, 140, 30, 32 };
 int SecondaryReserveAmmo[9] =  { 90, 32, 32, 32, 32, 200, 0, 80, 0 };
@@ -151,6 +159,7 @@ public void OnPluginStart()
 	
 	
 	CreateTimer(1.0, dispense, _, TIMER_REPEAT);
+	CreateTimer(0.5, afterburn, _, TIMER_REPEAT);
 }
 
 public OnMapStart()
@@ -306,6 +315,10 @@ public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		{
 			DetonateStickies(client);
 		}
+		else if (class[client] == pyro)
+		{
+			Airblast(client);
+		}
 		AltFireCooldown[client] = true;
 		CreateTimer(1.0, RemoveAltFireCooldown, client);
 	}
@@ -368,7 +381,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 		{
 			boss = "Saxton Hale";
 		}
-		else if (BossType == 1) // TODO: Add new bosses soon
+		else if (BossType == 1) // TODO: Add new bosses soon, preferrably based on CS fads, maybe a chicken boss?
 		{
 			boss = "Bonk Boy";
 		}
@@ -429,7 +442,7 @@ public Action RoundStart(Handle event, const String:name[], bool:dontBroadcast)
 	for (int client = 1; client < MAXPLAYERS; client++)
 	{
 		isInDispenser[client] = 0;
-		CritBoosted[client] = false;
+		clientFlags[client] &= ~CSF2_CRITBOOSTED;
 	}
 	dispenserIndex = 0;
 	mine_counter = 0;
@@ -495,10 +508,11 @@ public Action HurtTracker(Handle event, const String:name[], bool dontBroadcast)
 	
 	if (class[attacker] == pyro && class[client] != pyro)
 	{
-		if (clientIsBurning[client])return;
-		else
+		if (clientFlags[client] & CSF2_BURNING == 0)
 		{
-			clientIsBurning[client] = true;
+			SetEntityRenderColor(client, 255, 155, 155, 255);
+			clientFlags[client] |= CSF2_BURNING;
+			pyroAttacker[client] = attacker;
 			CreateTimer(5.0, burnDuration, client);
 		}
 	}
@@ -540,16 +554,17 @@ public Action damageTextBatch(Handle timer, any client)
 
 public Action burnDuration(Handle timer, any client)
 {
-	clientIsBurning[client] = false;
+	SetEntityRenderColor(client, 255, 255, 255, 255);
+	clientFlags[client] &= ~CSF2_BURNING;
 }
 
 public Action afterburn(Handle timer)
 {
 	for (int client = 0; client < MAXPLAYERS; client++)
 	{
-		if (clientIsBurning[client] == true)
+		if (clientFlags[client] & CSF2_BURNING != 0)
 		{
-			
+			if (IsClientInGame(pyroAttacker[client]) && IsClientInGame(client)) SDKHooks_TakeDamage(client, pyroAttacker[client], pyroAttacker[client], 3.0, DMG_BURN, _, NULL_VECTOR, NULL_VECTOR);
 		}
 	}
 }
@@ -566,7 +581,7 @@ public Action KillReward(Handle:event, const String:name[], bool:dontBroadcast)
 	
 	ClientCommand(attacker, "playgamesound ui/xp_milestone_01.wav");
 	
-	AddPoints(GetClientTeam(attacker), 2, sm_csf2_gamemode);
+	if (attacker != client) AddPoints(GetClientTeam(attacker), 2, sm_csf2_gamemode);
 	if (assister != 0 && IsClientConnected(assister) && IsClientInGame(assister) && GetClientTeam(assister) == GetClientTeam(attacker))AddPoints(GetClientTeam(attacker), 1, sm_csf2_gamemode);
 	
 	if (class[attacker] == spy)
@@ -689,7 +704,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 			CritBoost(attacker);
 		}
 		
-		if (CritBoosted[attacker] && damagetype != CS_DMG_HEADSHOT)
+		if (clientFlags[attacker] & CSF2_CRITBOOSTED != 0 && damagetype != CS_DMG_HEADSHOT)
 		{
 			damagetype = CS_DMG_HEADSHOT;
 			fDamage *= 3.0;
@@ -975,6 +990,91 @@ public Action DestroyFlames(int client)
 	
 }
 
+public Action Airblast(int attacker)
+{
+	int primaryWeapon = GetPlayerWeaponSlot(attacker, 0);
+	
+	if (primaryWeapon != -1)
+	{
+		int primaryClip = GetEntProp(primaryWeapon, Prop_Send, "m_iClip1");
+		if (primaryClip >= 20) SetEntProp(primaryWeapon, Prop_Send, "m_iClip1", primaryClip - 20);
+		else return Plugin_Continue;
+	}
+			
+	for (int client = 1; client < MAXPLAYERS; client++)
+	{
+		if (client == attacker) continue;
+		if (IsTargetInSightRange(attacker, client, _, 440.0)) 
+		{
+			if (GetClientTeam(attacker) == GetClientTeam(client))
+			{
+				SetEntityRenderColor(client, 255, 255, 255, 255);
+				clientFlags[client] &= ~CSF2_BURNING;
+				int newHealth = GetClientHealth(attacker);
+				if (GetClientHealth(attacker) > 175) newHealth = 175;
+				SetEntData(attacker, FindDataMapInfo(attacker, "m_iHealth"), newHealth, 4, true);
+			}
+			else
+			{
+				float ClientPos[3], AttackerPos[3];
+				GetClientEyePosition(client, ClientPos);
+				GetClientEyePosition(attacker, AttackerPos);
+				AttackerPos[2] -= 40.0;
+				float distance = GetVectorDistance(AttackerPos, ClientPos);
+				
+				RJ_Jump(client, distance, AttackerPos, ClientPos, 0.75, false, false);
+			}
+		}
+	}
+	return Plugin_Continue;
+}
+
+bool IsTargetInSightRange(client, target, Float:angle=90.0, Float:distance=0.0, bool:heightcheck=true, bool:negativeangle=false)
+{
+	if(angle > 360.0 || angle < 0.0)
+		ThrowError("Angle Max : 360 & Min : 0. %d isn't proper angle.", angle);
+	if(!IsClientInGame(client) || !IsPlayerAlive(client))
+		return false;
+	if(!IsClientInGame(target) || !IsPlayerAlive(target))
+		return false;
+		
+	decl Float:clientpos[3], Float:targetpos[3], Float:anglevector[3], Float:targetvector[3], Float:resultangle, Float:resultdistance;
+	
+	GetClientEyeAngles(client, anglevector);
+	anglevector[0] = anglevector[2] = 0.0;
+	GetAngleVectors(anglevector, anglevector, NULL_VECTOR, NULL_VECTOR);
+	NormalizeVector(anglevector, anglevector);
+	if(negativeangle)
+		NegateVector(anglevector);
+
+	GetClientAbsOrigin(client, clientpos);
+	GetClientAbsOrigin(target, targetpos);
+	if(heightcheck && distance > 0)
+		resultdistance = GetVectorDistance(clientpos, targetpos);
+	clientpos[2] = targetpos[2] = 0.0;
+	MakeVectorFromPoints(clientpos, targetpos, targetvector);
+	NormalizeVector(targetvector, targetvector);
+	
+	resultangle = RadToDeg(ArcCosine(GetVectorDotProduct(targetvector, anglevector)));
+	
+	if(resultangle <= angle/2)	
+	{
+		if(distance > 0)
+		{
+			if(!heightcheck)
+				resultdistance = GetVectorDistance(clientpos, targetpos);
+			if(distance >= resultdistance)
+				return true;
+			else
+				return false;
+		}
+		else
+			return true;
+	}
+	else
+		return false;
+}
+
 public Action Command_forceclass(int client, int args)
 {
 	if (args < 2)
@@ -1017,6 +1117,7 @@ public Action SpawnEvent(Handle:event, const String:name[], bool:dontBroadcast)
 	int client_id = GetEventInt(event, "userid");
 	int client = GetClientOfUserId(client_id);
 	
+	clientFlags[client] = 0;
 	ServerCommand("mp_buytime 0");
 	
 	if (sm_csf2_gamemode.IntValue == 2)
@@ -1800,7 +1901,7 @@ int GetAliveTeamCount(int team)
 
 public CritBoost(int client)
 {
-	CritBoosted[client] = true;
+	clientFlags[client] |= CSF2_CRITBOOSTED;
 	int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 	int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 	int meleeWeapon = GetPlayerWeaponSlot(client, 2);
@@ -1837,7 +1938,7 @@ public CritBoost(int client)
 
 public RemoveCritBoost(int client)
 {
-	CritBoosted[client] = false;
+	clientFlags[client] &= ~CSF2_CRITBOOSTED;
 	int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 	int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 	int meleeWeapon = GetPlayerWeaponSlot(client, 2);

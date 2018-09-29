@@ -31,7 +31,7 @@ bool BuildDispenser(int client)
 {
 	if (DispenserBuilt[client])
 	{
-		CPrintToChat(client, "{lightgreen}You've already built a {white}Dispenser!");
+		PrintToChat(client, "\x05You've already built a \x01Dispenser!");
 		return false;
 	}
 	
@@ -119,9 +119,11 @@ public Action CreateDispenser(int client, float position[3], float normal[3])
 	int health = Entity_GetHealth(dispenser);
 	if (GetClientTeam(client) == CS_TEAM_T)SetHudTextParams(0.2, 0.1, 0.0, 95, 151, 239, 235);
 	if (GetClientTeam(client) == CS_TEAM_CT)SetHudTextParams(0.2, 0.1, 0.0, 239, 197, 95, 235);
-	ShowHudText(client, 2, "Dispenser: %d HP", health);
+	SetHudTextParams(0.7, 0.2, 120.0, 140, 120, 250, 205);
+	ShowHudText(client, 4, "Dispenser: %d HP", health);
 	
 	DispenserBuilt[client] = true;
+	
 }
 
 //from https://forums.alliedmods.net/showthread.php?t=129597

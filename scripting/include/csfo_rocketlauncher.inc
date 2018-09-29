@@ -301,8 +301,13 @@ public Action:GrenadeTouch(ent, other)
 }
 
 // Borrowed from Rocket Jump plugin https://forums.alliedmods.net/showthread.php?t=283533
-public void RJ_Jump(int shooter, float distance, float clientORG[3], float explodeORG[3], float scale, bool damageplayer)
+void RJ_Jump(int shooter, float distance, float clientORG[3], float explodeORG[3], float scale, bool damageplayer, bool requireairborne=true)
 {
+	
+	if (!requireairborne)
+	{
+		distance = 80.0;
+	}
 	
 	//Check, how far is player from bullet
 	if (distance < MAX_DISTANCE)
@@ -380,7 +385,7 @@ public void RJ_Jump(int shooter, float distance, float clientORG[3], float explo
 			}
 		}
 		
-		if ((GetEntityFlags(shooter) & FL_ONGROUND))
+		if ((GetEntityFlags(shooter) & FL_ONGROUND) && requireairborne)
 			ScaleVector(velocity, 0.4);
 		else ScaleVector(velocity, 1.4);
 		
@@ -418,6 +423,11 @@ public void RJ_Jump(int shooter, float distance, float clientORG[3], float explo
 			if (damage > 0 && damage < 10) damage = 10.0;
 			SDKHooks_TakeDamage(shooter, shooter, shooter, damage, DMG_BLAST, _, _, explodeORG);
 			//PrintToChat(shooter, "You took %f damage, %f distance", damage, distance);
+		}
+		
+		if (!requireairborne)
+		{
+			velocity[2] *= 5.0;
 		}
 		
 		TeleportEntity(shooter, NULL_VECTOR, NULL_VECTOR, velocity);
