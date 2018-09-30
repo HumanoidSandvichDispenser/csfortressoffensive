@@ -17,6 +17,7 @@
 #include <csfo_downloads>
 #include <csfo_gamemodes>
 #include <csfo_grenadelauncher>
+#include <csfo_tools>
 #include <colors>
 
 enum classtype
@@ -112,8 +113,10 @@ public void OnPluginStart()
 		SetFailState("This plugin is for CSGO only.");
 	}
 	
+	ToolsInit();
 	
 	RegAdminCmd("sm_forceclass", Command_forceclass, ADMFLAG_SLAY, "Forces class to other players.");
+	RegAdminCmd("sm_placeitemspawn", Command_placeitemspawn, ADMFLAG_CHANGEMAP, "Places an item spawner in the map.");
 	AddCommandListener(ChooseTeam, "jointeam");
 	//ServerCommand("mp_ct_default_secondary  "); //Sets the default secondary for both teams to " ", which is blank.
 	//ServerCommand("mp_t_default_secondary  ");
@@ -194,6 +197,7 @@ public OnMapStart()
 	PrecacheModel("models/props/de_mill/generatoronwheels.mdl", true);
 	PrecacheModel("models/props/cs_office/vending_machine.mdl", true);
 	PrecacheModel("models/props/coop_cementplant/coop_ammo_stash/coop_ammo_stash_full.mdl", true);
+	PrecacheModel("models/props/de_inferno/hr_i/inferno_wine_crate/inferno_wine_crate_01.mdl", true);
 	PrecacheModel("models/player/custom_player/legacy/tm_p­hoenix_heavy.mdl");
 	
 	PrecacheModel("models/player/custom_player/kuristaja/tf2/scout/scout_bluv2.mdl", true);
@@ -410,6 +414,8 @@ public Action SetupEnd(Handle timer, int gamemode)
 
 public Action RoundStart(Handle event, const String:name[], bool:dontBroadcast)
 {
+	LoadItemSpawns();
+	
 	if (sm_csf2_gamemode.IntValue == 2 || sm_csf2_gamemode.IntValue == 5)
 	{
 		for (int i = 1; i < MAXPLAYERS; i++)
@@ -651,21 +657,12 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 			if (armorValue + 50 > 150)armorValue = 100;
 			SetEntProp(victim, Prop_Send, "m_ArmorValue", armorValue + 50);
 			
-			if (primaryWeapon != -1)
-			{
-				int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-				SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + (PrimaryReserveAmmo[class[victim] - 1]));
-			}
-			
-			if (secondaryWeapon != -1)
-			{
-				int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-				SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (SecondaryReserveAmmo[class[victim] - 1]));
-			}
+			RestockAmmo(victim, primaryWeapon, secondaryWeapon, 1);
 		}
 		else if (attacker != 0 && GetClientTeam(victim) == CS_TEAM_CT && GetClientTeam(attacker) == CS_TEAM_T)
 		{
-			PrintCenterTextAll("Boss HP: %d / %d", GetClientHealth(SaxtonHaleClient), healthtype[SaxtonHaleClient]);
+			int percentage = RoundToNearest(float(SaxtonHaleRage / 50));
+			PrintCenterTextAll("Boss HP: %d / %d (%d%% Rage)", GetClientHealth(SaxtonHaleClient), healthtype[SaxtonHaleClient], percentage);
 			if (!RageActive)
 			{
 				int AddRage = RoundFloat(fDamage);
@@ -673,17 +670,17 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 				SaxtonHaleRage += AddRage;
 				if (SaxtonHaleRage > 1250 && !AnnouncedRage[0])
 				{
-					PrintToChat(SaxtonHaleClient, "[CS:FO] \x05Rage is 25\% filled.");
+					PrintToChatAll("[CS:FO] \x05Rage is 25%% filled.");
 					AnnouncedRage[0] = true;
 				}
 				if (SaxtonHaleRage > 2500 && !AnnouncedRage[1])
 				{
-					PrintToChatAll("[CS:FO] \x05Rage is 50\% filled.");
+					PrintToChatAll("[CS:FO] \x05Rage is 50%% filled.");
 					AnnouncedRage[1] = true;
 				}
 				if (SaxtonHaleRage > 3750 && !AnnouncedRage[2])
 				{
-					PrintToChat(SaxtonHaleClient, "[CS:FO] \x05Rage is 75\% filled.");
+					PrintToChatAll("[CS:FO] \x05Rage is 75%% filled.");
 					AnnouncedRage[2] = true;
 				}
 				if (SaxtonHaleRage > 5000 && !AnnouncedRage[3])
@@ -854,6 +851,9 @@ public StartTouch(int client, int entity)
 	GetEntityClassname(entity, entityclass, sizeof(entityclass));
 	Entity_GetName(entity, entityname, sizeof(entityname));
 	
+	float position[3];
+	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", position);
+	
 	if (StrEqual(entityname, "dispenser_2") || StrEqual(entityname, "dispenser_3"))
 	{
 		//isInDispenser[client] = true;
@@ -872,18 +872,74 @@ public StartTouch(int client, int entity)
 			if (armorValue + 50 > 150)armorValue = 100;
 			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + 50);
 			
-			if (primaryWeapon != -1)
-			{
-				int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-				SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + (PrimaryReserveAmmo[class[client] - 1] / 2));
-			}
-			
-			if (secondaryWeapon != -1)
-			{
-				int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-				SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (SecondaryReserveAmmo[class[client] - 1] / 2));
-			}
+			RestockAmmo(client, primaryWeapon, secondaryWeapon, 2);
 		}
+	}
+	
+	else if (StrEqual(entityname, "item_ammo") && Entity_GetCollisionGroup(entity) != COLLISION_GROUP_DEBRIS)
+	{
+		//int type = GetEntProp(entity, Prop_Send, "m_nSkin");
+		int Rotator = GetEntPropEnt(entity, Prop_Send, "m_hEffectEntity");
+		GetEntPropVector(Rotator, Prop_Send, "m_vecOrigin", position);
+		
+		/*
+		new Handle:h_Pack;
+		
+		CreateDataTimer(10.0, RespawnItem, h_Pack, TIMER_DATA_HNDL_CLOSE);
+		WritePackFloat(h_Pack, position[0]);
+		WritePackFloat(h_Pack, position[1]);
+		WritePackFloat(h_Pack, position[2]);
+		WritePackCell(h_Pack, type);
+		*/
+		
+		FaintEntity(entity);
+		CreateTimer(10.0, RespawnItem, entity);
+		
+		ClientCommand(client, "playgamesound items/pickup_ammo_01.wav");
+	
+		if (IsClientInGame(client))
+		{
+			int primaryWeapon = GetPlayerWeaponSlot(client, 0);
+			int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
+			int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
+			if (armorValue + 50 > 150)armorValue = 100;
+			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + 50);
+			
+			RestockAmmo(client, primaryWeapon, secondaryWeapon, 2);
+		}
+	}
+	
+	else if (StrEqual(entityname, "item_health") && Entity_GetCollisionGroup(entity) != COLLISION_GROUP_DEBRIS)
+	{		
+		//int type = GetEntProp(entity, Prop_Send, "m_nSkin");
+		int Rotator = GetEntPropEnt(entity, Prop_Send, "m_hEffectEntity");
+		GetEntPropVector(Rotator, Prop_Send, "m_vecOrigin", position);
+		
+		/*
+		new Handle:h_Pack;
+		
+		CreateDataTimer(10.0, RespawnItem, h_Pack, TIMER_DATA_HNDL_CLOSE);
+		WritePackFloat(h_Pack, position[0]);
+		WritePackFloat(h_Pack, position[1]);
+		WritePackFloat(h_Pack, position[2]);
+		WritePackCell(h_Pack, type);
+		*/
+		
+		FaintEntity(entity);
+		CreateTimer(10.0, RespawnItem, entity);
+		
+		ClientCommand(client, "playgamesound common/beep.wav");
+		ClientCommand(client, "playgamesound items/pickup_ammo_01.wav");
+		ClientCommand(client, "playgamesound items/healthshot_success_01.wav");
+		
+		if (IsClientInGame(client) && client != SaxtonHaleClient)
+		{
+			int newHealth = GetClientHealth(client);
+			newHealth += RoundToNearest(float(healthtype[client] / 2));
+			SetEntData(client, FindDataMapInfo(client, "m_iHealth"), newHealth, 4, true);
+			
+		}
+
 	}
 	
 	if (StrEqual(entityclass, "prop_dynamic"))
@@ -941,6 +997,13 @@ public StartTouch(int client, int entity)
 public EndTouch(int client, int entity)
 {
 	
+}
+
+public Action FaintEntity(int entity)
+{
+	SetEntityRenderColor(entity, 225, 225, 225, 25);
+	SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
+	Entity_SetCollisionGroup(entity, COLLISION_GROUP_DEBRIS);
 }
 
 public Action WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
@@ -1011,15 +1074,23 @@ public Action Airblast(int attacker)
 				SetEntityRenderColor(client, 255, 255, 255, 255);
 				clientFlags[client] &= ~CSF2_BURNING;
 				int newHealth = GetClientHealth(attacker);
-				if (GetClientHealth(attacker) > 175) newHealth = 175;
-				SetEntData(attacker, FindDataMapInfo(attacker, "m_iHealth"), newHealth, 4, true);
+				
+				if (newHealth < 175)
+				{
+					if (newHealth + 25 > 175)
+					{
+						newHealth = 175;
+					}
+					SetEntData(attacker, FindDataMapInfo(attacker, "m_iHealth"), newHealth, 4, true);
+				}
+				
 			}
 			else
 			{
 				float ClientPos[3], AttackerPos[3];
 				GetClientEyePosition(client, ClientPos);
 				GetClientEyePosition(attacker, AttackerPos);
-				AttackerPos[2] -= 40.0;
+				AttackerPos[2] -= 30.0;
 				float distance = GetVectorDistance(AttackerPos, ClientPos);
 				
 				RJ_Jump(client, distance, AttackerPos, ClientPos, 0.75, false, false);
@@ -1959,6 +2030,21 @@ public RemoveCritBoost(int client)
 	{
 		if (GetClientTeam(client) == CS_TEAM_CT)SetEntityRenderColor(meleeWeapon);
 		else SetEntityRenderColor(meleeWeapon);
+	}
+}
+
+public RestockAmmo(int client, int primaryWeapon, int secondaryWeapon, int multiplier)
+{
+	if (primaryWeapon != -1)
+	{
+		int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
+		SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + (PrimaryReserveAmmo[class[client] - 1] / multiplier));
+	}
+	
+	if (secondaryWeapon != -1)
+	{
+		int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
+		SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (SecondaryReserveAmmo[class[client] - 1] / multiplier));
 	}
 }
 
