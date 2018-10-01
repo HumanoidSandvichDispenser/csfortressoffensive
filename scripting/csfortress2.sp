@@ -304,7 +304,7 @@ public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		}
 	}
 	
-	if ((buttons & IN_USE) != 0)
+	if (buttons & IN_USE)
 	{
 		if (sm_csf2_gamemode.IntValue == 5 && SaxtonHaleRage >= 5000)
 		{
@@ -1004,6 +1004,7 @@ public Action FaintEntity(int entity)
 	SetEntityRenderColor(entity, 225, 225, 225, 25);
 	SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
 	Entity_SetCollisionGroup(entity, COLLISION_GROUP_DEBRIS);
+	//AcceptEntityInput();
 }
 
 public Action WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
