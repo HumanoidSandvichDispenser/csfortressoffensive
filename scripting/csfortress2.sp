@@ -1101,6 +1101,7 @@ public Action Airblast(int attacker)
 	return Plugin_Continue;
 }
 
+// Function by Guren: https://forums.alliedmods.net/showthread.php?t=210080
 bool IsTargetInSightRange(client, target, Float:angle=90.0, Float:distance=0.0, bool:heightcheck=true, bool:negativeangle=false)
 {
 	if(angle > 360.0 || angle < 0.0)
