@@ -1863,14 +1863,30 @@ public OnClientDisconnect(client)
 
 public Action OnShouldBotAttackPlayer(bot, player, &bool:result)
 {
+	bool changed = false;
 	if (result)return Plugin_Continue;
 	
-	if (class[bot] == medic && GetClientHealth(player) < healthtype[player] * 1.25)
+	if (class[bot] == medic)
 	{
-		if (class[player] != medic)result = true;
-		else if (GetClientHealth(player) > healthtype[player])result = true;
-		return Plugin_Changed;
+		if (clientFlags[player] & CSF2_UBERCHARGED && GetClientTeam(bot) == GetClientTeam(player))
+		{
+			changed = result = true; // this makes medics healing ubercharged patients to keep their uber
+		}
+
+		if (GetClientHealth(player) < healthtype[player] * 1.25)
+		{
+			if (class[player] != medic)result = true;
+			else if (GetClientHealth(player) > healthtype[player])result = true;
+			changed = true;
+		}
 	}
+	else if (clientFlags[player] & CSF2_UBERCHARGED && GetClientTeam(bot) != GetClientTeam(player))
+	{
+		result = false; // do not try to attack if target is ubercharged
+		changed = true;
+	}
+
+	if (changed) return Plugin_Changed;
 	return Plugin_Continue;
 }
 
