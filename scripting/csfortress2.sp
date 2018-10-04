@@ -42,6 +42,7 @@ enum classtype
 #define CSF2_CRITBOOSTED 1 << 4
 #define CSF2_FIRINGFLAMETHROWER 1 << 5
 #define CSF2_UBERCHARGED 1 << 6
+#define CSF2_MINICRITVULNERABLE 1 << 7
 
 int clientFlags[MAXPLAYERS + 1] = 0;
 
