@@ -10,7 +10,6 @@
 #include <sdktools>
 #include <cstrike>
 #include <smlib>
-#include <colors>
 
 public void UpdateGamemode(ConVar convar, char[] oldValue, char[] newValue)
 {
@@ -46,7 +45,7 @@ public void UpdateGameCVars(gamemode)
 	{
 		case 0: // None
 		{
-			PrintToChatAll("[CS:FO] Next Gamemode: None");
+			PrintToChatAll("[CS:FO] Next Gamemode: \x05None");
 			ignorewinconditions.BoolValue = true;
 			TRespawnOnDeath.BoolValue = true;
 			CTRespawnOnDeath.BoolValue = true;
@@ -56,7 +55,7 @@ public void UpdateGameCVars(gamemode)
 		}
 		case 1: // DM
 		{
-			PrintToChatAll("[CS:FO] Next Gamemode: Deathmatch");
+			PrintToChatAll("[CS:FO] Next Gamemode: \x05Deathmatch");
 			ignorewinconditions.BoolValue = true;
 			time_defuse.FloatValue = 0.0;
 			time_hostage.FloatValue = 0.0;
@@ -66,7 +65,7 @@ public void UpdateGameCVars(gamemode)
 		}
 		case 2: // Payload (CS Style)
 		{
-			PrintToChatAll("[CS:FO] Next Gamemode: CS Payload");
+			PrintToChatAll("[CS:FO] Next Gamemode: \x05CS Payload");
 			ignorewinconditions.BoolValue = false;
 			time_defuse.FloatValue = 4.5;
 			time_hostage.FloatValue = 0.0;
@@ -77,7 +76,7 @@ public void UpdateGameCVars(gamemode)
 		}
 		case 5: // Saxton Hale
 		{
-			PrintToChatAll("[CS:FO] Next Gamemode: Saxton Hale");
+			PrintToChatAll("[CS:FO] Next Gamemode: \x05Saxton Hale");
 			maxrounds.IntValue = 4;
 			ignorewinconditions.BoolValue = true;
 			UseRespawnWaves.BoolValue = false;
@@ -97,10 +96,6 @@ public Action AddPoints(int team, int points, ConVar GMConVar)
 	if (GMConVar.IntValue != 1)return Plugin_Handled;
 	
 	SetTeamScore(team, GetTeamScore(team) + points);
-	//char teamname[32];
-	//GetTeamName(team, teamname, 32);
-	//PrintToChatAll("%s %d %d", teamname, GetTeamScore(team), points);
-	
 	UpdatePoints(GMConVar);
 	
 	return Plugin_Continue;
@@ -132,7 +127,7 @@ public Action ShowGamemodeMessage(ConVar GMConVar)
 	{
 		PrintToChatAll("[CS:FO] \x06Deathmatch: \x05First team to 55 points win. Even in this gamemode, teamwork is essential to victory.");
 	}
-	if (GMConVar.IntValue == 2)
+	else if (GMConVar.IntValue == 2)
 	{
 		for (int i = 1; i < MAXPLAYERS; i++)
 		{
@@ -147,7 +142,7 @@ public Action ShowGamemodeMessage(ConVar GMConVar)
 			}
 		}
 	}
-	if (GMConVar.IntValue == 5)
+	else if (GMConVar.IntValue == 5)
 	{
 		PrintToChatAll("[CS:FO] \x06Saxton Hale: \x05Kill Saxton Hale. Kill Everyone as Saxton Hale.");
 	}
@@ -168,7 +163,7 @@ public int GetRandomPlayer(team, bool botsCanBeSaxtonHale)
 {
 	
 	int clients[MAXPLAYERS + 1], clientCount;
-	for (new i = 1; i <= MaxClients; i++)
+	for (int i = 1; i <= MAXPLAYERS; i++)
 	if (IsClientInGame(i) && (GetClientTeam(i) == team))
 	{
 		if (botsCanBeSaxtonHale && IsFakeClient(i))clients[clientCount++] = i;

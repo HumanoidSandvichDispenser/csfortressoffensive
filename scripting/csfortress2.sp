@@ -43,6 +43,7 @@ enum classtype
 #define CSF2_FIRINGFLAMETHROWER 1 << 5
 #define CSF2_UBERCHARGED 1 << 6
 #define CSF2_MINICRITVULNERABLE 1 << 7
+#define CSF2_ISINBUYZONE 1 << 8
 
 int clientFlags[MAXPLAYERS + 1] = 0;
 
@@ -51,7 +52,6 @@ classtype class[MAXPLAYERS + 1] = none;
 int healthtype[MAXPLAYERS + 1] = 100;
 int damagedonetotal[MAXPLAYERS + 1] = 0;
 Handle batchTimer[MAXPLAYERS + 1];
-bool clientIsInBuyzone[MAXPLAYERS + 1] = false;
 bool AltFireCooldown[MAXPLAYERS + 1] = false;
 int pyroAttacker[MAXPLAYERS + 1] = 0;
 
@@ -179,17 +179,7 @@ public OnMapStart()
 	// PRECACHE MODELS
 	PrecacheModel(MODEL_MINE);
 	PrecacheModel(MODEL_BEAM, true);
-	
-	//AddFileToDownloadsTable( "models/tripmine/tripmine.dx90.vtx" );
-	//AddFileToDownloadsTable( "models/tripmine/tripmine.mdl" );
-	//AddFileToDownloadsTable( "models/tripmine/tripmine.phy" );
-	//AddFileToDownloadsTable( "models/tripmine/tripmine.vvd" );
-	
-	//AddFileToDownloadsTable( "materials/models/tripmine/minetexture.vmt" );
-	//AddFileToDownloadsTable( "materials/models/tripmine/minetexture.vtf" );
-	
-	PrecacheSound("weapons/hegrenade/explode3.wav");
-	PrecacheSound("weapons/hegrenade/explode4.wav");
+
 	PrecacheSound("weapons/hegrenade/explode5.wav");
 	
 	PrecacheModel(ROCKET_MODEL, true);
@@ -278,7 +268,7 @@ public Action dispense(Handle timer)
 
 public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
-	if (!IsValidClient(client))return Plugin_Continue;
+	if (!IsValidClient(client)) return Plugin_Continue;
 	
 	char sWeapon[32];
 	GetClientWeapon(client, sWeapon, sizeof(sWeapon));
@@ -289,15 +279,7 @@ public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		return Plugin_Changed;
 	}
 	
-	if ((buttons & IN_USE) == 0) {
-		
-		if (defuse_userid[client] && !defuse_cancelled[client]) {  // is defuse in progress?
-			defuse_cancelled[client] = true;
-			PrintHintText(client, "Defusal Cancelled.");
-		}
-	}
-	
-	if ((buttons & IN_ATTACK) == 0)
+	if (buttons & IN_ATTACK)
 	{
 		if (class[client] == pyro)
 		{
@@ -315,7 +297,7 @@ public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 	
 	if (buttons & IN_ATTACK2)
 	{
-		if (AltFireCooldown[client])return Plugin_Continue;
+		if (AltFireCooldown[client]) return Plugin_Continue;
 		if (class[client] == demoman)
 		{
 			DetonateStickies(client);
@@ -395,7 +377,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 			boss = "BLU Heavy Weapons Guy";
 		}
 		
-		PrintToChatAll("%s \x09became %s with %d HP!", name, boss, HP);
+		PrintToChatAll("%s \x09became %s with \x01%d \x09HP!", name, boss, HP);
 		
 		CreateTimer(0.1, RespawnSaxtonHale, NewSaxtonHale);
 	}
@@ -404,8 +386,8 @@ public Action SetupEnd(Handle timer, int gamemode)
 	{
 		if (IsClientConnected(i) && IsClientInGame(i))
 		{
-			if (GetClientTeam(i) == CS_TEAM_T)SetEntityMoveType(i, MOVETYPE_WALK);
-			else if (gamemode == 5)SetEntityMoveType(i, MOVETYPE_WALK);
+			if (GetClientTeam(i) == CS_TEAM_T) SetEntityMoveType(i, MOVETYPE_WALK);
+			else if (gamemode == 5) SetEntityMoveType(i, MOVETYPE_WALK);
 		}
 		
 	}
@@ -467,14 +449,14 @@ public Action RoundPostStart(Handle event, const String:name[], bool dontBroadca
 public Action EnterBuyzone(Handle event, const String:name[], bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	clientIsInBuyzone[client] = true;
+	clientFlags[client] |= CSF2_ISINBUYZONE;
 	return Plugin_Continue;
 }
 
 public Action ExitBuyzone(Handle event, const String:name[], bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	clientIsInBuyzone[client] = false;
+	clientFlags[client] |= CSF2_ISINBUYZONE;
 	return Plugin_Continue;
 }
 
