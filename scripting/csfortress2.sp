@@ -3,7 +3,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "Humanoid Sandivch Dispenser"
-#define PLUGIN_VERSION "1.00"
+#define PLUGIN_VERSION "1.2.1"
 
 #include <sourcemod>
 #include <sdktools>
@@ -82,8 +82,8 @@ ConVar sm_csf2_bots_can_be_saxtonhale;
 
 #define HEGrenadeOffset 11	// (11 * 4)
 #define FlashbangOffset 12	// (12 * 4)
-#define SmokegrenadeOffset	13	// (13 * 4)
-#define IncenderyGrenadesOffset	14	// (14 * 4) Also Molotovs
+#define SmokegrenadeOffset	13 // (13 * 4)
+#define IncenderyGrenadesOffset	14 // (14 * 4) Also Molotovs
 
 #define class_scout "Scout"
 #define class_soldier "Soldier"
@@ -405,7 +405,7 @@ public Action RoundStart(Handle event, const String:name[], bool:dontBroadcast)
 		{
 			if (IsClientConnected(i) && IsClientInGame(i))
 			{
-				if (GetClientTeam(i) == CS_TEAM_T || sm_csf2_gamemode.IntValue == 5)SetEntityMoveType(i, MOVETYPE_NONE);
+				if (GetClientTeam(i) == CS_TEAM_T || sm_csf2_gamemode.IntValue == 5) SetEntityMoveType(i, MOVETYPE_NONE);
 				
 			}
 		}
@@ -413,12 +413,12 @@ public Action RoundStart(Handle event, const String:name[], bool:dontBroadcast)
 		CreateTimer(15.0, SetupEnd, sm_csf2_gamemode.IntValue);
 	}
 	
-	if (SaxtonHaleOldClass != classtype:0 && SaxtonHaleClient > 0)class[SaxtonHaleClient] = SaxtonHaleOldClass;
+	if (SaxtonHaleOldClass != classtype:0 && SaxtonHaleClient > 0) class[SaxtonHaleClient] = SaxtonHaleOldClass;
 	SaxtonHaleClient = -1;
 	SaxtonHaleRage = 0;
-	AnnouncedRage[0] = false;
-	AnnouncedRage[1] = false;
-	AnnouncedRage[2] = false;
+	AnnouncedRage[0] = 
+	AnnouncedRage[1] = 
+	AnnouncedRage[2] = 
 	AnnouncedRage[3] = false;
 	
 	ServerCommand("exec csfortress2_script");
@@ -515,12 +515,6 @@ public Action HurtTracker(Handle event, const String:name[], bool dontBroadcast)
 	
 	if (attacker > 0)batchTimer[attacker] = CreateTimer(2.5, resetTimer, attacker);
 	
-	
-	
-	
-	
-	
-	
 }
 
 public Action resetTimer(Handle timer, any attacker)
@@ -560,8 +554,6 @@ public Action afterburn(Handle timer)
 
 public Action KillReward(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	
-	
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	int assister = GetClientOfUserId(GetEventInt(event, "assister"));
@@ -822,8 +814,13 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		changed = true;
 	}
 	
-	if (changed)return Plugin_Changed;
-	
+	if (clientFlags[client] & CSF2_UBERCHARGED)
+	{
+		fDamage = 0;
+		changed = true;
+	}
+
+	if (changed) return Plugin_Changed;
 	return Plugin_Continue;
 }
 
@@ -835,7 +832,7 @@ public StartTouch(int client, int entity)
 	Entity_GetName(entity, entityname, sizeof(entityname));
 	
 	float position[3];
-	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", position);
+	Entity_GetAbsOrigin(entity, position);
 	
 	if (StrEqual(entityname, "dispenser_2") || StrEqual(entityname, "dispenser_3"))
 	{
@@ -852,7 +849,7 @@ public StartTouch(int client, int entity)
 			int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 			int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 			int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
-			if (armorValue + 50 > 150)armorValue = 100;
+			if (armorValue + 50 > 150) armorValue = 100;
 			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + 50);
 			
 			RestockAmmo(client, primaryWeapon, secondaryWeapon, 2);
@@ -861,19 +858,8 @@ public StartTouch(int client, int entity)
 	
 	else if (StrEqual(entityname, "item_ammo") && Entity_GetCollisionGroup(entity) != COLLISION_GROUP_DEBRIS)
 	{
-		//int type = GetEntProp(entity, Prop_Send, "m_nSkin");
 		int Rotator = GetEntPropEnt(entity, Prop_Send, "m_hEffectEntity");
 		GetEntPropVector(Rotator, Prop_Send, "m_vecOrigin", position);
-		
-		/*
-		new Handle:h_Pack;
-		
-		CreateDataTimer(10.0, RespawnItem, h_Pack, TIMER_DATA_HNDL_CLOSE);
-		WritePackFloat(h_Pack, position[0]);
-		WritePackFloat(h_Pack, position[1]);
-		WritePackFloat(h_Pack, position[2]);
-		WritePackCell(h_Pack, type);
-		*/
 		
 		FaintEntity(entity);
 		CreateTimer(10.0, RespawnItem, entity);
@@ -885,7 +871,7 @@ public StartTouch(int client, int entity)
 			int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 			int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 			int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
-			if (armorValue + 50 > 150)armorValue = 100;
+			if (armorValue + 50 > 150) armorValue = 100;
 			SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + 50);
 			
 			RestockAmmo(client, primaryWeapon, secondaryWeapon, 2);
@@ -897,16 +883,6 @@ public StartTouch(int client, int entity)
 		//int type = GetEntProp(entity, Prop_Send, "m_nSkin");
 		int Rotator = GetEntPropEnt(entity, Prop_Send, "m_hEffectEntity");
 		GetEntPropVector(Rotator, Prop_Send, "m_vecOrigin", position);
-		
-		/*
-		new Handle:h_Pack;
-		
-		CreateDataTimer(10.0, RespawnItem, h_Pack, TIMER_DATA_HNDL_CLOSE);
-		WritePackFloat(h_Pack, position[0]);
-		WritePackFloat(h_Pack, position[1]);
-		WritePackFloat(h_Pack, position[2]);
-		WritePackCell(h_Pack, type);
-		*/
 		
 		FaintEntity(entity);
 		CreateTimer(10.0, RespawnItem, entity);
@@ -927,16 +903,12 @@ public StartTouch(int client, int entity)
 	
 	if (StrEqual(entityclass, "prop_dynamic"))
 	{
-		
-		//PrintToChat(client, "DEBUG: resupplied"); 
-		
 		switch (class[client])
 		{
 			case pyro:
 			{
-				new nadesupply = (16 - GetClientIncendaryGrenades(client));
-				new i;
-				for (i = 1; i < nadesupply; i++)
+				int nadesupply = (16 - GetClientIncendaryGrenades(client));
+				for (int i = 1; i < nadesupply; i++)
 				{
 					GivePlayerItem(client, "weapon_incgrenade");
 				}
@@ -944,9 +916,8 @@ public StartTouch(int client, int entity)
 			
 			case demoman:
 			{
-				new nadesupply = (16 - GetClientHEGrenades(client));
-				new i;
-				for (i = 1; i < nadesupply; i++)
+				int nadesupply = (16 - GetClientHEGrenades(client));
+				for (int i = 1; i < nadesupply; i++)
 				{
 					GivePlayerItem(client, "weapon_hegrenade");
 				}
@@ -954,15 +925,15 @@ public StartTouch(int client, int entity)
 			
 			case spy:
 			{
-				new nadesupply = (16 - GetClientSmokeGrenades(client));
-				new nadesupply2 = (16 - GetClientFlashbang(client));
-				new i;
-				new i2;
-				for (i = 1; i < nadesupply; i++)
+				int nadesupply = (16 - GetClientSmokeGrenades(client));
+				int nadesupply2 = (16 - GetClientFlashbang(client));
+				int i;
+				int i2;
+				for (i = 0; i < nadesupply; i++)
 				{
 					GivePlayerItem(client, "weapon_smokegrenade");
 				}
-				for (i2 = 1; i2 < nadesupply2; i2++)
+				for (i2 = 0; i2 < nadesupply2; i2++)
 				{
 					GivePlayerItem(client, "weapon_flashbang");
 				}
@@ -971,10 +942,7 @@ public StartTouch(int client, int entity)
 			
 		}
 	}
-	
-	
 	//1886351984
-	
 }
 
 public EndTouch(int client, int entity)
@@ -997,7 +965,7 @@ public Action WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
 	int client = GetClientOfUserId(client_id);
 	char weapon[128];
 	
-	if (!IsClientConnected(client) || !IsClientInGame(client))return Plugin_Continue;
+	if (!IsClientConnected(client) || !IsClientInGame(client)) return Plugin_Continue;
 	
 	if (class[client] == demoman || class[client] == soldier)
 	{
@@ -1014,7 +982,7 @@ public Action WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
 	{
 		GetEventString(event, "weapon", weapon, 128);
 		
-		if (StrEqual(weapon, "weapon_p90"))CreateFlames(client);
+		if (StrEqual(weapon, "weapon_p90")) CreateFlames(client);
 	}
 	
 	if (class[client] == medic)
@@ -1775,7 +1743,7 @@ public menuhandler(Handle:menu, MenuAction:action, param1, param2)
 
 public CreateBuildMenu(client)
 {
-	new Handle:menu = CreateMenu(buildmenu, MenuAction_Select | MenuAction_End | MenuAction_DisplayItem);
+	Handle menu = CreateMenu(buildmenu, MenuAction_Select | MenuAction_End | MenuAction_DisplayItem);
 	SetMenuTitle(menu, "Build Menu");
 	
 	AddMenuItem(menu, "item_sentrygun", "Sentry Gun", ITEMDRAW_DISABLED);
@@ -1951,9 +1919,9 @@ public Action ActivateRage()
 
 public Action DeactivateRage(Handle timer)
 {
-	AnnouncedRage[0] = false;
-	AnnouncedRage[1] = false;
-	AnnouncedRage[2] = false;
+	AnnouncedRage[0] = 
+	AnnouncedRage[1] = 
+	AnnouncedRage[2] = 
 	AnnouncedRage[3] = false;
 	RageActive = false;
 	PrintToChat(SaxtonHaleClient, "[CS:FO] \x07Rage is now over.");
@@ -1962,9 +1930,9 @@ public Action DeactivateRage(Handle timer)
 int GetAliveTeamCount(int team)
 {
 	int number = 0;
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MAXPLAYERS; i++)
 	{
-		if (!IsClientConnected(i))continue;
+		if (!IsClientConnected(i)) continue;
 		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == team)
 			number++;
 	}
@@ -1997,13 +1965,13 @@ public CritBoost(int client)
 	
 	if (secondaryWeapon != -1)
 	{
-		if (GetClientTeam(client) == CS_TEAM_CT)SetEntityRenderColor(secondaryWeapon, 50, 190, 255);
+		if (GetClientTeam(client) == CS_TEAM_CT) SetEntityRenderColor(secondaryWeapon, 50, 190, 255);
 		else SetEntityRenderColor(secondaryWeapon, 255, 50, 50);
 	}
 	
 	if (meleeWeapon != -1)
 	{
-		if (GetClientTeam(client) == CS_TEAM_CT)SetEntityRenderColor(meleeWeapon, 50, 190, 255);
+		if (GetClientTeam(client) == CS_TEAM_CT) SetEntityRenderColor(meleeWeapon, 50, 190, 255);
 		else SetEntityRenderColor(meleeWeapon, 255, 50, 50);
 	}
 }
@@ -2017,19 +1985,19 @@ public RemoveCritBoost(int client)
 	
 	if (primaryWeapon != -1)
 	{
-		if (GetClientTeam(client) == CS_TEAM_CT)SetEntityRenderColor(primaryWeapon);
+		if (GetClientTeam(client) == CS_TEAM_CT) SetEntityRenderColor(primaryWeapon);
 		else SetEntityRenderColor(primaryWeapon);
 	}
 	
 	if (secondaryWeapon != -1)
 	{
-		if (GetClientTeam(client) == CS_TEAM_CT)SetEntityRenderColor(secondaryWeapon);
+		if (GetClientTeam(client) == CS_TEAM_CT) SetEntityRenderColor(secondaryWeapon);
 		else SetEntityRenderColor(secondaryWeapon);
 	}
 	
 	if (meleeWeapon != -1)
 	{
-		if (GetClientTeam(client) == CS_TEAM_CT)SetEntityRenderColor(meleeWeapon);
+		if (GetClientTeam(client) == CS_TEAM_CT) SetEntityRenderColor(meleeWeapon);
 		else SetEntityRenderColor(meleeWeapon);
 	}
 }
