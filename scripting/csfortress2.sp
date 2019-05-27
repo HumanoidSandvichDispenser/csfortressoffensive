@@ -55,13 +55,16 @@ Handle batchTimer[MAXPLAYERS + 1];
 bool AltFireCooldown[MAXPLAYERS + 1] = false;
 int pyroAttacker[MAXPLAYERS + 1] = 0;
 
-int PrimaryReserveAmmo[9] =  { 32, 20, 200, 16, 200, 32, 140, 30, 32 };
-int SecondaryReserveAmmo[9] =  { 90, 32, 32, 32, 32, 200, 0, 80, 0 };
+int iPrimaryReserveAmmo[9] =  { 32, 20, 200, 16, 200, 32, 140, 30, 32 };
+int iSecondaryReserveAmmo[9] =  { 90, 32, 32, 32, 32, 200, 0, 80, 0 };
 
-int SaxtonHaleClient = -1;
+int iSaxtonHaleClient = -1;
 classtype:SaxtonHaleOldClass = classtype:0;
 int SaxtonHaleRage = 0;
 int BossType = 0;
+float SuperJumpCharge = 0.0;
+bool SuperJumpCharging = false;
+Handle SuperJumpTimer;
 bool RageActive = false;
 bool AnnouncedRage[4];
 
@@ -74,6 +77,7 @@ bool AnnouncedRage[4];
 Handle sm_csf2_randomcrits; // Command for random crits
 ConVar sm_csf2_gamemode;
 ConVar sm_csf2_bots_can_be_saxtonhale;
+ConVar sm_csf2_dm_score_limit;
 
 // do not remove below pls
 //Removed trigger_hurt(trigger_resupply_blue_2)
@@ -118,7 +122,6 @@ public void OnPluginStart()
 	
 	RegAdminCmd("sm_forceclass", Command_forceclass, ADMFLAG_SLAY, "Forces class to other players.");
 	RegAdminCmd("sm_placeitemspawn", Command_placeitemspawn, ADMFLAG_CHANGEMAP, "Places an item spawner in the map.");
-	AddCommandListener(ChooseTeam, "jointeam");
 	//ServerCommand("mp_ct_default_secondary  "); //Sets the default secondary for both teams to " ", which is blank.
 	//ServerCommand("mp_t_default_secondary  ");
 	ServerCommand("mp_death_drop_grenade 0");
@@ -145,6 +148,7 @@ public void OnPluginStart()
 	sm_csf2_randomcrits = CreateConVar("sm_csf2_randomcrits", "0", "Enables/disables random critical hits");
 	sm_csf2_gamemode = CreateConVar("sm_csf2_gamemode", "0", "0 = None, 1 = Deathmatch, 2 = Defusal");
 	sm_csf2_bots_can_be_saxtonhale = CreateConVar("sm_csf2_bots_can_be_saxtonhale", "1", "If non-zero, bots can be chosen to be Saxton Hale.");
+	sm_csf2_dm_score_limit = CreateConVar("sm_csf2_dm_score_limit", "70", "The score required for a team to win a Deathmatch game.");
 	
 	sm_csf2_gamemode.AddChangeHook(UpdateGamemode);
 	
@@ -161,7 +165,9 @@ public void OnPluginStart()
 	PrecacheModel(PIPE_MODEL);
 	PrecacheModel(STICKY_MODEL);
 	
+	AddNormalSoundHook(OnNormalSoundPlayed); // hook sounds
 	
+	CreateTimer(0.25, DecayOverheal, _, TIMER_REPEAT);
 	CreateTimer(1.0, dispense, _, TIMER_REPEAT);
 	CreateTimer(0.5, afterburn, _, TIMER_REPEAT);
 }
@@ -229,6 +235,16 @@ public OnMapStart()
 	PrecacheModel("models/player/custom_player/kuristaja/tf2/spy/spy_blu_arms.mdl", true);
 	PrecacheModel("models/player/custom_player/kuristaja/tf2/spy/spy_red_arms.mdl", true);
 	
+	PrecacheSound("tf/death/Scout_paincriticaldeath01.wav");
+	PrecacheSound("tf/death/Soldier_paincriticaldeath01.wav");
+	PrecacheSound("tf/death/Pyro_paincriticaldeath01.wav");
+	PrecacheSound("tf/death/Demoman_paincriticaldeath01.wav");
+	PrecacheSound("tf/death/Heavy_paincriticaldeath01.wav");
+	PrecacheSound("tf/death/Engineer_paincriticaldeath01.wav");
+	PrecacheSound("tf/death/Medic_paincriticaldeath01.wav");
+	PrecacheSound("tf/death/Sniper_paincriticaldeath01.wav");
+	PrecacheSound("tf/death/Spy_paincriticaldeath01.wav");
+	
 	DownloadFiles();
 	
 	UpdateGameCVars(sm_csf2_gamemode.IntValue);
@@ -247,19 +263,11 @@ public Action dispense(Handle timer)
 				int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
 				int armorValue = GetEntProp(client, Prop_Send, "m_ArmorValue");
 				if (armorValue + 50 > 150)armorValue = 100;
-				SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + (isInDispenser[client] * 5));
+				SetEntProp(client, Prop_Send, "m_ArmorValue", armorValue + (isInDispenser[client] * 25));
 				
-				if (primaryWeapon != -1)
-				{
-					int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-					SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + (isInDispenser[client] * 5));
-				}
+				RestockAmmo(client, primaryWeapon, secondaryWeapon, 5);
 				
-				if (secondaryWeapon != -1)
-				{
-					int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iSecondaryReserveAmmoCount");
-					SetEntProp(secondaryWeapon, Prop_Send, "m_iSecondaryReserveAmmoCount", secondaryRes + (isInDispenser[client] * 5));
-				}
+				PrintToConsole(client, "[CSF2:DEBUG] You are in a dispenser");
 			}
 		}
 		
@@ -272,11 +280,17 @@ public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 	
 	char sWeapon[32];
 	GetClientWeapon(client, sWeapon, sizeof(sWeapon));
+	bool bWeaponIsMelee =
+	StrEqual(sWeapon, "weapon_knife", false) || StrEqual(sWeapon, "weapon_hammer", false) || StrEqual(sWeapon, "weapon_axe", false) ||
+	StrEqual(sWeapon, "weapon_fists", false) || StrEqual(sWeapon, "weapon_spanner", false);
 	
-	if (StrEqual(sWeapon, "weapon_knife", false))
+	
+	bool changed = false;
+	
+	if (bWeaponIsMelee)
 	{
 		buttons &= ~IN_ATTACK2;
-		return Plugin_Changed;
+		changed = true;
 	}
 	
 	if (buttons & IN_ATTACK)
@@ -284,6 +298,29 @@ public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		if (class[client] == pyro)
 		{
 			DestroyFlames(client);
+		}
+	}
+	
+	if (buttons & IN_DUCK)
+	{
+		if (client == iSaxtonHaleClient)
+		{
+			if (SuperJumpTimer == INVALID_HANDLE || SuperJumpTimer == null) SuperJumpTimer = CreateTimer(0.25, BuildSuperJump, client, TIMER_REPEAT);
+		}
+	}
+	else
+	{
+		if (SuperJumpCharge > 0)
+		{
+			PrintToChat(client, "Charge Activated!");
+			float ClientPos[3];
+			float JumpPos[3];
+			JumpPos[2] -= 32;
+			GetClientEyePosition(client, ClientPos);
+			float dist = GetVectorDistance(JumpPos, ClientPos);
+					
+			RJ_Jump(client, dist, ClientPos, JumpPos, SuperJumpCharge * 2, false, false);
+			SuperJumpCharge = 0.0;
 		}
 	}
 	
@@ -310,6 +347,7 @@ public Action OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		CreateTimer(1.0, RemoveAltFireCooldown, client);
 	}
 	
+	if (changed) return Plugin_Changed;
 	return Plugin_Continue;
 }
 
@@ -350,7 +388,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 		
 		int NewSaxtonHale = GetRandomPlayer(CS_TEAM_T, sm_csf2_bots_can_be_saxtonhale.BoolValue);
 		SaxtonHaleOldClass = class[NewSaxtonHale];
-		SaxtonHaleClient = NewSaxtonHale;
+		iSaxtonHaleClient = NewSaxtonHale;
 		ChangeClientTeam(NewSaxtonHale, CS_TEAM_CT);
 		
 		class[NewSaxtonHale] = saxtonhale;
@@ -368,7 +406,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 		{
 			boss = "Saxton Hale";
 		}
-		else if (BossType == 1) // TODO: Add new bosses soon, preferrably based on CS fads, maybe a chicken boss?
+		else if (BossType == 1) // TODO: Add new bosses soon
 		{
 			boss = "Bonk Boy";
 		}
@@ -379,7 +417,7 @@ public Action SetupEnd(Handle timer, int gamemode)
 		
 		PrintToChatAll("%s \x09became %s with \x01%d \x09HP!", name, boss, HP);
 		
-		CreateTimer(0.1, RespawnSaxtonHale, NewSaxtonHale);
+		CreateTimer(0.25, RespawnSaxtonHale, NewSaxtonHale);
 	}
 	
 	for (int i = 1; i < MAXPLAYERS; i++)
@@ -399,6 +437,7 @@ public Action RoundStart(Handle event, const String:name[], bool:dontBroadcast)
 {
 	LoadItemSpawns();
 	
+	// Setup freezetime for CS Payload and Saxton Hale
 	if (sm_csf2_gamemode.IntValue == 2 || sm_csf2_gamemode.IntValue == 5)
 	{
 		for (int i = 1; i < MAXPLAYERS; i++)
@@ -413,8 +452,8 @@ public Action RoundStart(Handle event, const String:name[], bool:dontBroadcast)
 		CreateTimer(15.0, SetupEnd, sm_csf2_gamemode.IntValue);
 	}
 	
-	if (SaxtonHaleOldClass != classtype:0 && SaxtonHaleClient > 0) class[SaxtonHaleClient] = SaxtonHaleOldClass;
-	SaxtonHaleClient = -1;
+	if (SaxtonHaleOldClass != classtype:0 && iSaxtonHaleClient > 0) class[iSaxtonHaleClient] = SaxtonHaleOldClass;
+	iSaxtonHaleClient = -1;
 	SaxtonHaleRage = 0;
 	AnnouncedRage[0] = 
 	AnnouncedRage[1] = 
@@ -423,8 +462,6 @@ public Action RoundStart(Handle event, const String:name[], bool:dontBroadcast)
 	
 	ServerCommand("exec csfortress2_script");
 	ShowGamemodeMessage(sm_csf2_gamemode);
-	
-	CreateTimer(0.25, DecayOverheal, _, TIMER_REPEAT);
 	
 	ServerCommand("mp_buytime 0");
 	
@@ -475,7 +512,7 @@ public Action HurtTracker(Handle event, const String:name[], bool dontBroadcast)
 	damagedonetotal[attacker] += damagedone;
 	//clientIsShooting[attacker] = true;
 	
-	if (attacker < 1 && !IsClientConnected(attacker) && !IsClientInGame(attacker))
+	if (attacker < 1)
 	{
 		PrintToConsole(client, "DEBUG: Took damage by world.");
 	}
@@ -637,7 +674,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		else if (attacker != 0 && GetClientTeam(victim) == CS_TEAM_CT && GetClientTeam(attacker) == CS_TEAM_T)
 		{
 			int percentage = RoundToNearest(float(SaxtonHaleRage / 50));
-			PrintCenterTextAll("Boss HP: %d / %d (%d%% Rage)", GetClientHealth(SaxtonHaleClient), healthtype[SaxtonHaleClient], percentage);
+			PrintCenterTextAll("<font color='#FF5959'>Boss HP:</font> %d / %d <font color='85EF45'>(%d%% Rage)</font>", GetClientHealth(iSaxtonHaleClient), healthtype[iSaxtonHaleClient], percentage);
 			if (!RageActive)
 			{
 				int AddRage = RoundFloat(fDamage);
@@ -662,8 +699,8 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 				{
 					AnnouncedRage[3] = true;
 					SaxtonHaleRage = 5000;
-					PrintToChat(SaxtonHaleClient, "[CS:FO] \x06Rage is now Ready! \x05Press +USE \x01(Default: E) \x05to activate.");
-					if (IsFakeClient(SaxtonHaleClient))
+					PrintToChat(iSaxtonHaleClient, "[CS:FO] \x06Rage is now Ready! \x05Press +USE \x01(Default: E) \x05to activate.");
+					if (IsFakeClient(iSaxtonHaleClient))
 					{
 						ActivateRage();
 					}
@@ -671,7 +708,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 			}
 		}
 		
-		if (sm_csf2_gamemode.IntValue == 5 && GetAliveTeamCount(CS_TEAM_T) < 4 && GetClientTeam(attacker) == CS_TEAM_T)
+		if (sm_csf2_gamemode.IntValue == 5 && GetAliveTeamCount(CS_TEAM_T) < 4 && attacker > 0 && GetClientTeam(attacker) == CS_TEAM_T)
 		{
 			CritBoost(attacker);
 		}
@@ -814,9 +851,9 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		changed = true;
 	}
 	
-	if (clientFlags[client] & CSF2_UBERCHARGED)
+	if (clientFlags[victim] & CSF2_UBERCHARGED)
 	{
-		fDamage = 0;
+		fDamage = 0.0;
 		changed = true;
 	}
 
@@ -833,12 +870,6 @@ public StartTouch(int client, int entity)
 	
 	float position[3];
 	Entity_GetAbsOrigin(entity, position);
-	
-	if (StrEqual(entityname, "dispenser_2") || StrEqual(entityname, "dispenser_3"))
-	{
-		//isInDispenser[client] = true;
-		//PrintToConsole(client, "DEBUG: You touched a dispenser.");
-	}
 	
 	if (StrEqual(entityname, "item_ammo_drop"))
 	{
@@ -891,7 +922,7 @@ public StartTouch(int client, int entity)
 		ClientCommand(client, "playgamesound items/pickup_ammo_01.wav");
 		ClientCommand(client, "playgamesound items/healthshot_success_01.wav");
 		
-		if (IsClientInGame(client) && client != SaxtonHaleClient)
+		if (IsClientInGame(client) && client != iSaxtonHaleClient)
 		{
 			int newHealth = GetClientHealth(client);
 			newHealth += RoundToNearest(float(healthtype[client] / 2));
@@ -1141,14 +1172,14 @@ public Action SpawnEvent(Handle:event, const String:name[], bool:dontBroadcast)
 	int client_id = GetEventInt(event, "userid");
 	int client = GetClientOfUserId(client_id);
 	
-	clientFlags[client] = 0;
-	ServerCommand("mp_buytime 0");
-	
-	if (sm_csf2_gamemode.IntValue == 2)
+	if (!IsPlayerAlive(client))
 	{
-		if (GetClientTeam(client) == CS_TEAM_T)GivePlayerItem(client, "weapon_c4");
+		return;
 	}
 	
+	clientFlags[client] = 0;
+	ServerCommand("mp_buytime 0");
+
 	if (IsFakeClient(client) || class[client] == none)
 	{
 		if (ClassOnTeam(GetClientTeam(client), medic) < 1)class[client] = medic; // Medic is priority class
@@ -1210,6 +1241,7 @@ public Action SpawnEvent(Handle:event, const String:name[], bool:dontBroadcast)
 		{
 			GivePlayerItem(client, "weapon_xm1014");
 			GivePlayerItem(client, "weapon_fiveseven");
+			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnSoldier, client, TIMER_FLAG_NO_MAPCHANGE);
 			//GivePlayerItem(client, "weapon_sawedoff");
 			healthtype[client] = 200;
@@ -1230,14 +1262,13 @@ public Action SpawnEvent(Handle:event, const String:name[], bool:dontBroadcast)
 		{
 			GivePlayerItem(client, "weapon_p90");
 			GivePlayerItem(client, "weapon_fiveseven");
+			GivePlayerItem(client, "item_assaultsuit");
 			//GivePlayerItem(client, "weapon_sawedoff");
-			GivePlayerItem(client, "weapon_taser");
 			for (int i = 0; i < 16; i++)
 			{
 				GivePlayerItem(client, "weapon_incgrenade");
 			}
 			
-			GivePlayerItem(client, "weapon_taser");
 			GivePlayerItem(client, "item_assaultsuit");
 			CreateTimer(0.1, RespawnNormal, client, TIMER_FLAG_NO_MAPCHANGE);
 			healthtype[client] = 175;
@@ -1258,6 +1289,7 @@ public Action SpawnEvent(Handle:event, const String:name[], bool:dontBroadcast)
 		{
 			GivePlayerItem(client, "weapon_mag7");
 			GivePlayerItem(client, "weapon_deagle");
+			GivePlayerItem(client, "item_assaultsuit");
 			for (int i = 0; i < 16; i++)
 			{
 				GivePlayerItem(client, "weapon_hegrenade");
@@ -1396,13 +1428,28 @@ public Action SpawnEvent(Handle:event, const String:name[], bool:dontBroadcast)
 		
 		case saxtonhale:
 		{
-			
+			PrintToChat(client, "CONTROLS:");
+			PrintToChat(client, "+use (Default: E) to active rage");
+			PrintToChat(client, "Crouch to anchor and charge super jump");
+			PrintToChat(client, "Crouch mid-air to weighdown");
+
+			//CreateTimer(0.25, RespawnSaxtonHale, client);
 		}
 		
 		default:
 		{
 			PrintToChat(client, "Please choose a class before respawning.");
 		}
+	}
+	
+	CreateTimer(0.15, RespawnDelay, client);
+}
+
+public Action RespawnDelay(Handle timer, any client)
+{
+	if (sm_csf2_gamemode.IntValue == 2)
+	{
+		if (GetClientTeam(client) == CS_TEAM_T) EquipPlayerWeapon(client, GivePlayerItem(client, "weapon_c4"));
 	}
 }
 
@@ -1419,6 +1466,11 @@ public Action RespawnLight(Handle timer, any client)
 	SetEntityGravity(client, 1.0);
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 185, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 125, 4, true);
+	
+	if (class[client] == engineer)
+	{
+		GiveMelee(client, "weapon_spanner");
+	}
 }
 
 public Action RespawnNormal(Handle timer, any client)
@@ -1426,6 +1478,11 @@ public Action RespawnNormal(Handle timer, any client)
 	SetEntityGravity(client, 1.0);
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 260, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 175, 4, true);
+	
+	if (class[client] == pyro)
+	{
+		GiveMelee(client, "weapon_axe");
+	}
 }
 
 public Action RespawnSoldier(Handle timer, any client)
@@ -1433,6 +1490,8 @@ public Action RespawnSoldier(Handle timer, any client)
 	SetEntityGravity(client, 0.9);
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 300, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 200, 4, true);
+	
+	GiveMelee(client, "weapon_hammer");
 }
 
 public Action RespawnHeavy(Handle timer, any client)
@@ -1440,6 +1499,7 @@ public Action RespawnHeavy(Handle timer, any client)
 	SetEntityGravity(client, 1.0);
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), 450, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), 300, 4, true);
+	GiveMelee(client, "weapon_fists");
 }
 
 public Action RespawnSaxtonHale(Handle timer, any client)
@@ -1452,6 +1512,24 @@ public Action RespawnSaxtonHale(Handle timer, any client)
 	SetEntData(client, FindDataMapInfo(client, "m_iMaxHealth"), HP, 4, true);
 	SetEntData(client, FindDataMapInfo(client, "m_iHealth"), HP, 4, true);
 	SetEntityModel(client, "models/player/custom_player/kuristaja/tf2/heavy/heavy_bluv2.mdl");
+}
+
+public void GiveMelee(int client, const char[] sWeaponName)
+{
+	RemoveMelee(client);
+	EquipPlayerWeapon(client, GivePlayerItem(client, sWeaponName));
+}
+
+
+public void RemoveMelee(int client)
+{
+	int weapon;
+	
+	while((weapon = GetPlayerWeaponSlot(client, CS_SLOT_KNIFE)) != -1)
+	{
+		RemovePlayerItem(client, weapon);
+		AcceptEntityInput(weapon, "Kill");
+	}
 }
 
 public Action OnClientCommand(int client, int args)
@@ -1482,7 +1560,8 @@ public Action OnClientCommand(int client, int args)
 
 public void about(int client, int args)
 {
-	PrintToChat(client, "\x0FCounter-Strike: Fortress Offensive 1.00\x01 by Humanoid Sandvich Dispenser\nPlayer Models by Kuristaja");
+	PrintToChat(client, "\x0FCounter-Strike: Fortress Offensive 1.00\x01 by Humanoid Sandvich Dispenser\n");
+	PrintToChat(client, "Player Models by Kuristaja");
 }
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
@@ -1528,6 +1607,16 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 		Command_class(client, args);
 	}
 	
+	if (strcmp(sArgs, "/changeclass", false) == 0)
+	{
+		Command_class(client, args);
+	}
+	
+	if (strcmp(sArgs, "/class", false) == 0)
+	{
+		Command_class(client, args);
+	}
+
 	if (StrEqual(sArgs, "class scout", false))
 	{
 		ForcePlayerSuicide(client);
@@ -1620,7 +1709,7 @@ public void SetClass(client)
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
 
-//thanks to menucreator or whatever
+// thanks to menucreator or whatever
 public menuhandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	
@@ -1628,7 +1717,7 @@ public menuhandler(Handle:menu, MenuAction:action, param1, param2)
 	{
 		case MenuAction_Select:
 		{
-			//param1 is client, param2 is item
+			// param1 is client, param2 is item
 			
 			char item[64];
 			GetMenuItem(menu, param2, item, sizeof(item));
@@ -1691,50 +1780,14 @@ public menuhandler(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_End:
 		{
-			//param1 is MenuEnd reason, if canceled param2 is MenuCancel reason
+			// param1 is MenuEnd reason, if canceled param2 is MenuCancel reason
 			CloseHandle(menu);
 			
 		}
 		
 		case MenuAction_DisplayItem:
 		{
-			
-			//param1 is client, param2 is item
-			/*
-			new String:item[64];
-			GetMenuItem(menu, param2, item, sizeof(item));
 
-			if (StrEqual(item, "class_scout"))
-			{
-				new String:translation[128];
-				Format(translation, sizeof(translation), "%T", "class_scout", param1);
-				return RedrawMenuItem(translation);
-			}
-			else if (StrEqual(item, "class_pyro"))
-			{
-				new String:translation[128];
-				Format(translation, sizeof(translation), "%T", "class_pyro", param1);
-				return RedrawMenuItem(translation);
-			}
-			else if (StrEqual(item, "class_heavyweapons"))
-			{
-				new String:translation[128];
-				Format(translation, sizeof(translation), "%T", "class_heavyweapons", param1);
-				return RedrawMenuItem(translation);
-			}
-			else if (StrEqual(item, "class_sniper"))
-			{
-				new String:translation[128];
-				Format(translation, sizeof(translation), "%T", "class_sniper", param1);
-				return RedrawMenuItem(translation);
-			}
-			else if (StrEqual(item, "class_spy"))
-			{
-				new String:translation[128];
-				Format(translation, sizeof(translation), "%T", "class_spy", param1);
-				return RedrawMenuItem(translation);
-			}
-			*/
 		}
 		
 	}
@@ -1862,36 +1915,38 @@ public Action DecayOverheal(Handle timer)
 	for (int i = 1; i < MAXPLAYERS; i++)
 	{
 		if (!IsClientConnected(i) || !IsClientInGame(i))continue;
+		/*
+		if (ClassOnTeam(GetClientTeam(i), medic) > 0) // are there any medics in the team?
+		{
+			for (int j = MAXPLAYERS; --j > 0; )
+			{
+				if (!IsClientConnected(j) || !IsClientInGame(j))continue;
+				if (!IsFakeClient(j)) continue;
+				if (GetClientTeam(j) == GetClientTeam(i) && class[j] == medic)
+				{	
+					if (IsTargetInSightRange(j, i, 90.0, 400.0))
+					{
+						int health = GetClientHealth(i);
+						if (health < healthtype[i] * 1.5) SetEntData(i, FindDataMapInfo(i, "m_iHealth"), health + 2, 4, true);
+					}
+				}
+				
+			}
+		}
+		*/
 		int health = GetClientHealth(i);
-		if (health > healthtype[i])SetEntData(i, FindDataMapInfo(i, "m_iHealth"), health - 1, 4, true);
+		if (health > healthtype[i]) SetEntData(i, FindDataMapInfo(i, "m_iHealth"), health - 1, 4, true);
 	}
 }
 
-// Saxton Hale Code
-
-public Action ChooseTeam(client, const String:command[], argc)
+public Action BuildSuperJump(Handle timer, int client)
 {
-	if (sm_csf2_gamemode.IntValue != 5)return Plugin_Continue;
-	if (client == 0)
+	if (!(GetClientButtons(client) & IN_DUCK) || SuperJumpCharge > 2)
 	{
-		return Plugin_Continue;
+		return Plugin_Stop;
 	}
-	
-	if (GetClientTeam(client) == CS_TEAM_T)
-	{
-		if (SaxtonHaleClient != -1 && GetTeamClientCount(CS_TEAM_T) > 0 && SaxtonHaleClient != client)
-		{
-			PrintToChat(client, "There can only be 1 player on Terrorist side.");
-			ChangeClientTeam(client, CS_TEAM_CT);
-			return Plugin_Handled;
-		}
-		if (SaxtonHaleClient == -1 && GetTeamClientCount(CS_TEAM_T) == 0)
-		{
-			ChangeClientTeam(client, CS_TEAM_CT);
-			return Plugin_Handled;
-		}
-	}
-	
+	SuperJumpCharge += 0.1;
+	PrintToChatAll("[DEBUG] Charge: %f", (SuperJumpCharge));
 	return Plugin_Continue;
 }
 
@@ -1924,7 +1979,7 @@ public Action DeactivateRage(Handle timer)
 	AnnouncedRage[2] = 
 	AnnouncedRage[3] = false;
 	RageActive = false;
-	PrintToChat(SaxtonHaleClient, "[CS:FO] \x07Rage is now over.");
+	PrintToChat(iSaxtonHaleClient, "[CS:FO] \x07Rage is now over.");
 }
 
 int GetAliveTeamCount(int team)
@@ -2002,19 +2057,83 @@ public RemoveCritBoost(int client)
 	}
 }
 
-public RestockAmmo(int client, int primaryWeapon, int secondaryWeapon, int multiplier)
+public RestockAmmo(int client, int primaryWeapon, int secondaryWeapon, int factor)
 {
 	if (primaryWeapon != -1)
 	{
 		int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-		SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + (PrimaryReserveAmmo[class[client] - 1] / multiplier));
+		int addedAmmo = RoundToNearest(float(iPrimaryReserveAmmo[view_as<int>(class[client])]) / factor);
+		SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + addedAmmo);
 	}
 	
 	if (secondaryWeapon != -1)
 	{
 		int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-		SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + (SecondaryReserveAmmo[class[client] - 1] / multiplier));
+		int addedAmmo = RoundToNearest(float(iSecondaryReserveAmmo[view_as<int>(class[client])]) / factor);
+		SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + addedAmmo);
 	}
+}
+
+public Action OnNormalSoundPlayed(int clients[64], int &numClients, char sample[PLATFORM_MAX_PATH], int &client, int &channel, float &volume, int &level, int &pitch, int &flags)
+{
+	if (client && client <= MaxClients)
+	{
+		if (StrContains(sample, "death") != -1)
+		{
+			// Block current death sound and emit a new one
+			switch (class[client])
+			{
+				case scout:
+				{
+					EmitSoundToAll("tf/death/Scout_paincriticaldeath01.wav", client);
+				}
+				case soldier:
+				{ 
+					EmitSoundToAll("tf/death/Soldier_paincriticaldeath01.wav", client);
+				}
+				case pyro:
+				{
+					EmitSoundToAll("tf/death/Pyro_paincriticaldeath01.wav", client);
+				}
+				case demoman:
+				{
+					EmitSoundToAll("tf/death/Demoman_paincriticaldeath01.wav", client);
+				}
+				case heavyweapons:
+				{ 
+					EmitSoundToAll("tf/death/Heavy_paincriticaldeath01.wav", client);
+				}
+				case engineer:
+				{
+					EmitSoundToAll("tf/death/Engineer_paincriticaldeath01.wav", client);
+				}
+				case medic:
+				{
+					EmitSoundToAll("tf/death/Medic_paincriticaldeath01.wav", client);
+				}
+				case sniper:
+				{ 
+					EmitSoundToAll("tf/death/Sniper_paincriticaldeath01.wav", client);
+				}
+				case spy:
+				{
+					EmitSoundToAll("tf/death/Spy_paincriticaldeath01.wav", client);
+				}
+				default:
+				{
+					return Plugin_Continue;
+				}
+			}
+			return Plugin_Handled;
+		}
+	}
+	return Plugin_Continue;
+}
+
+public void PlayDeathSound(int client)
+{
+	//
+	
 }
 
 /*

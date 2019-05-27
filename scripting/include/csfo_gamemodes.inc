@@ -105,13 +105,13 @@ public Action UpdatePoints(ConVar GMConVar)
 {
 	if (GMConVar.IntValue == 1)
 	{
-		if (GetTeamScore(CS_TEAM_CT) >= 55)
+		if (GetTeamScore(CS_TEAM_CT) >= 70)
 		{
 			CS_TerminateRound(10.0, CSRoundEnd_CTWin);
 			Game_End();
 		}
 		
-		if (GetTeamScore(CS_TEAM_T) >= 55)
+		if (GetTeamScore(CS_TEAM_T) >= 70)
 		{
 			CS_TerminateRound(10.0, CSRoundEnd_TerroristWin);
 			Game_End();
@@ -163,7 +163,7 @@ public int GetRandomPlayer(team, bool botsCanBeSaxtonHale)
 {
 	
 	int clients[MAXPLAYERS + 1], clientCount;
-	for (int i = 1; i <= MAXPLAYERS; i++)
+	for (int i = 1; i < MAXPLAYERS; i++)
 	if (IsClientInGame(i) && (GetClientTeam(i) == team))
 	{
 		if (botsCanBeSaxtonHale && IsFakeClient(i))clients[clientCount++] = i;

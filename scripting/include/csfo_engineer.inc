@@ -29,11 +29,17 @@ int dispenserIndex = 0;
 
 bool BuildDispenser(int client)
 {
-	if (DispenserBuilt[client])
+	char dispenserName[16];
+	Format(dispenserName, 16, "dispenser_%d", client);
+	PrintToConsole(client, "[CSF2:DEBUG] Checking if %s already exists...", dispenserName);
+	
+	if (Entity_FindByName(dispenserName) != INVALID_ENT_REFERENCE)
 	{
 		PrintToChat(client, "\x05You've already built a \x01Dispenser!");
 		return false;
 	}
+	
+	//PrintToChat(client, "%d", Entity_FindByName(dispenserName, "prop_physics_override"));
 	
 	decl Float:trace_start[3], Float:trace_angle[3], Float:trace_end[3], Float:trace_normal[3];
 	GetClientEyePosition(client, trace_start);
@@ -75,55 +81,68 @@ public Action CreateDispenser(int client, float position[3], float normal[3])
 	
 	// Create Dispenser
 	int dispenser = CreateEntityByName("prop_physics_override");
-	DispenserBeingBuilt[client] = true;
+	if (dispenser != INVALID_ENT_REFERENCE)
+	{
+		DispenserBeingBuilt[client] = true;
 	
-	char dispensername[32];
-	char triggername[32];
+		char dispensername[32];
+		char triggername[32];
+		
+		char dispenseroutput[64];
+		
+		Format(dispensername, 64, "dispenser_%d", client);
+		Format(triggername, 64, "dispenserTrigger_%d", client);
+		
+		Entity_SetModel(dispenser, "models/props/de_mill/generatoronwheels.mdl");
+		DispatchKeyValue(dispenser, "physdamagescale", "0.0"); // enable this to destroy via physics?
+		DispatchKeyValue(dispenser, "targetname", dispensername);
+		DispatchKeyValue(dispenser, "spawnflags", "256"); // set "usable" flag
+		DispatchSpawn(dispenser);
+		
+		Entity_SetHealth(dispenser, 250);
+		SetEntityMoveType(dispenser, MOVETYPE_NONE);
+		SetEntProp(dispenser, Prop_Data, "m_takedamage", 2);
+		SetEntPropEnt(dispenser, Prop_Data, "m_hOwnerEntity", client);
+		SetEntityRenderColor(dispenser, 255, 255, 255, 255);
+		Entity_SetHealth(dispenser, 10);
+		Entity_SetCollisionGroup(dispenser, COLLISION_GROUP_DEBRIS);
+		angles[0] += 90;
+		TeleportEntity(dispenser, position, angles, NULL_VECTOR);
+		
+		
+		Format(dispenseroutput, sizeof(dispenseroutput), "%s,Kill,,0,-1", triggername);
+		DispatchKeyValue(dispenser, "OnBreak", dispenseroutput);
+		
+		int trigger = CreateTrigger(position, triggername);
+		HookSingleEntityOutput(trigger, "OnStartTouch", dispenseammo, false);
+		HookSingleEntityOutput(trigger, "OnEndTouch", dispenseammo, false);
+		HookSingleEntityOutput(dispenser, "OnBreak", UnhookDispenser, false);
+		SetEntPropEnt(trigger, Prop_Data, "m_hOwnerEntity", client);
+		
+		EmitSoundToAll(SOUND_BUILD, dispenser);
+		
+		SDKHook(dispenser, SDKHook_OnTakeDamage, Event_EntOnTakeDamage);
+	}
 	
-	char dispenseroutput[64];
-	
-	Format(dispensername, 64, "dispenser%d", dispenserIndex);
-	Format(triggername, 64, "trigger%d_%d", dispenserIndex, dispenser);
-	
-	Entity_SetModel(dispenser, "models/props/de_mill/generatoronwheels.mdl");
-	DispatchKeyValue(dispenser, "physdamagescale", "0.0"); // enable this to destroy via physics?
-	DispatchKeyValue(dispenser, "targetname", dispensername);
-	DispatchKeyValue(dispenser, "spawnflags", "256"); // set "usable" flag
-	DispatchSpawn(dispenser);
-	
-	Entity_SetHealth(dispenser, 10);
-	SetEntityMoveType(dispenser, MOVETYPE_NONE);
-	SetEntProp(dispenser, Prop_Data, "m_takedamage", 2);
-	SetEntPropEnt(dispenser, Prop_Data, "m_hOwnerEntity", client);
-	SetEntityRenderColor(dispenser, 255, 255, 255, 255);
-	Entity_SetHealth(dispenser, 10);
-	Entity_SetCollisionGroup(dispenser, COLLISION_GROUP_DEBRIS);
-	angles[0] += 90;
-	TeleportEntity(dispenser, position, angles, NULL_VECTOR);
-	
-	
-	Format(dispenseroutput, sizeof(dispenseroutput), "%s,Kill,,0,-1", triggername);
-	DispatchKeyValue(dispenser, "OnBreak", dispenseroutput);
-	
-	int trigger = CreateTrigger(position, triggername);
-	HookSingleEntityOutput(trigger, "OnStartTouch", dispenseammo, false);
-	HookSingleEntityOutput(trigger, "OnEndTouch", dispenseammo, false);
-	SetEntPropEnt(trigger, Prop_Data, "m_hOwnerEntity", client);
-	
-	EmitSoundToAll(SOUND_BUILD, dispenser);
-	
+	/*
 	dispenserIndex++;
 	
-	AutobuildTimer[client] = CreateTimer(0.1, Autobuild, dispenser);
+	char realDispenserName[16];
+	Entity_GetName(dispenser, realDispenserName, 16);
+	PrintToConsole(client, "[CSF2:DEBUG] Creating dispenser %s", realDispenserName);
+	//AutobuildTimer[client] = CreateTimer(0.1, Autobuild, dispenser);
 	
 	int health = Entity_GetHealth(dispenser);
-	if (GetClientTeam(client) == CS_TEAM_T)SetHudTextParams(0.2, 0.1, 0.0, 95, 151, 239, 235);
-	if (GetClientTeam(client) == CS_TEAM_CT)SetHudTextParams(0.2, 0.1, 0.0, 239, 197, 95, 235);
-	SetHudTextParams(0.7, 0.2, 120.0, 140, 120, 250, 205);
+	if (GetClientTeam(client) == CS_TEAM_T)SetHudTextParams(0.7, 0.1, 0.0, 95, 151, 239, 235);
+	if (GetClientTeam(client) == CS_TEAM_CT)SetHudTextParams(0.7, 0.1, 0.0, 239, 197, 95, 235);
 	ShowHudText(client, 4, "Dispenser: %d HP", health);
-	
-	DispenserBuilt[client] = true;
-	
+	*/
+}
+
+// 
+public UnhookDispenser(const char[] output, any caller, any activator, float delay)
+{
+	SDKUnhook(caller, SDKHook_OnTakeDamage, Event_EntOnTakeDamage);
 }
 
 //from https://forums.alliedmods.net/showthread.php?t=129597
@@ -196,3 +215,17 @@ stock BuildSentry(int client)
 {
 	
 } 
+
+public Action Event_EntOnTakeDamage(entity, &attacker, &inflictor, &Float:fDamage, &damagetype, &bweapon, Float:damageForce[3], Float:damagePosition[3])
+{
+	if (attacker > 0 && attacker < MAXPLAYERS && IsClientConnected(attacker))
+	{
+		int owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+		if (GetClientTeam(attacker) == GetClientTeam(owner))
+		{
+			fDamage = 0.0;
+			return Plugin_Changed;
+		}
+	}
+	return Plugin_Continue;
+}

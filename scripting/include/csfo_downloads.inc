@@ -83,4 +83,14 @@ public DownloadFiles()
 	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/sniper/sniper_redv2.dx90.vtx");
 	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_bluv2.dx90.vtx");
 	AddFileToDownloadsTable("models/player/custom_player/kuristaja/tf2/spy/spy_redv2.dx90.vtx");
+	
+	AddFileToDownloadsTable("sound/tf/death/Scout_paincriticaldeath01.wav");
+	AddFileToDownloadsTable("sound/tf/death/Soldier_paincriticaldeath01.wav");
+	AddFileToDownloadsTable("sound/tf/death/Pyro_paincriticaldeath01.wav");
+	AddFileToDownloadsTable("sound/tf/death/Demoman_paincriticaldeath01.wav");
+	AddFileToDownloadsTable("sound/tf/death/Heavy_paincriticaldeath01.wav");
+	AddFileToDownloadsTable("sound/tf/death/Engineer_paincriticaldeath01.wav");
+	AddFileToDownloadsTable("sound/tf/death/Medic_paincriticaldeath01.wav");
+	AddFileToDownloadsTable("sound/tf/death/Sniper_paincriticaldeath01.wav");
+	AddFileToDownloadsTable("sound/tf/death/Spy_paincriticaldeath01.wav");
 }

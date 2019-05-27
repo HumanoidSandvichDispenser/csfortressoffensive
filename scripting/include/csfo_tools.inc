@@ -67,12 +67,12 @@ public Action Command_placeitemspawn(int client, int args)
 ** @param pos			position of the health/ammo pack spawn
 ** @param type			type of health pack (0-2 for ammo, 3-5 for health)
 */
-public Action CreateHealthAmmoPackSpawn(int client, float pos[3], int type) // type: 0-2 ammo, 3-5 health
+public void CreateHealthAmmoPackSpawn(int client, float pos[3], int type) // type: 0-2 ammo, 3-5 health
 {
 	SaveSpawn(client, pos, type);
 }
 
-public Action SaveSpawn(int client, float pos[3], int type)
+public void SaveSpawn(int client, float pos[3], int type)
 {
 	Handle kv_file = CreateKeyValues("mapinfo");
 	if (!FileToKeyValues(kv_file, KVPath)) KeyValuesToFile(kv_file, KVPath);
@@ -107,7 +107,7 @@ public Action SaveSpawn(int client, float pos[3], int type)
 	KvizClose(kv);
 }
 
-public Action RemoveSpawn(int index)
+public void RemoveSpawn(int index)
 {
 	Handle kv = KvizCreateFromFile("mapinfo", KVPath);
 	
@@ -119,7 +119,7 @@ public Action RemoveSpawn(int index)
 	KvizClose(kv);
 }
 
-public Action LoadItemSpawns()
+public void LoadItemSpawns()
 {
 	Handle kv_file = CreateKeyValues("mapinfo");
 	if (!FileToKeyValues(kv_file, KVPath)) KeyValuesToFile(kv_file, KVPath);
@@ -133,7 +133,7 @@ public Action LoadItemSpawns()
 	
 	if (KvizJumpToKey(kv, false, mapname))
 	{
-		for (int i = 0; i < 129; i++)
+		for (int i = 0; i < 128; i++)
 		{
 			if (KvizExists(kv, "%d", i))
 			{
@@ -189,7 +189,7 @@ public Action RespawnHealth(Handle timer, any vec[3])
 	CreateHealth(vec, 5);
 }
 
-public Action CreateAmmo(float pos[3], int type)
+public void CreateAmmo(float pos[3], int type)
 {
 	int ammobox = CreateEntityByName("prop_physics_override");
 	char type_str[2];
@@ -223,7 +223,7 @@ public Action CreateAmmo(float pos[3], int type)
 	}
 }
 
-public Action CreateHealth(float pos[3], int type)
+public void CreateHealth(float pos[3], int type)
 {
 	int healthpack = CreateEntityByName("prop_physics_override");
 	char type_str[2];

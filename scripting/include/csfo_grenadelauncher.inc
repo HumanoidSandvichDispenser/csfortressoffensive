@@ -1,7 +1,3 @@
-/*
-**
-*/
-
 #if defined _csfo_grenadelauncher_included
 #endinput
 #endif
@@ -74,8 +70,7 @@ public Action:PipeTouch(ent, other)
 		DetonatePipe(ent);
 		//PipeBombTouch[GetPipeIndex(ent)] = true;
 	}
-	else
-		if (GetEntProp(other, Prop_Data, "m_nSolidType") && !(GetEntProp(other, Prop_Data, "m_usSolidFlags") & 0x0004))
+	else if (GetEntProp(other, Prop_Data, "m_nSolidType") && !(GetEntProp(other, Prop_Data, "m_usSolidFlags") & 0x0004))
 	{
 		//PipeBombTouch[GetPipeIndex(ent)] = true;
 		SetEntityGravity(ent, 1.0);
@@ -87,7 +82,7 @@ public Action DetonateTimedPipe(Handle timer, ent)
 {
 	if (!Entity_IsValid(ent))return Plugin_Continue;
 	new MissileOwner = GetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity");
-	if (IsClientInGame(MissileOwner))
+	if (MissileOwner > 0 && IsClientInGame(MissileOwner))
 	{
 		if (IsPlayerAlive(MissileOwner))
 		{
@@ -245,14 +240,24 @@ public Action:StickyStart(client)
 public StickyTouch(ent, other)
 {
 	SDKUnhook(ent, SDKHook_StartTouch, StickyTouch);
-	
 	if (other > 0 && other < MAXPLAYERS)
 	{
 		DetonateSticky(ent);
 		return;
 	}
+	if (other > 0 && other < MAXPLAYERS && IsFakeClient(other))
+	{
+		SDKHook(ent, SDKHook_StartTouch, BotStickyTouch);
+		return;
+	}
 	SetEntProp(ent, Prop_Send, "m_CollisionGroup", 2);
 	SetEntityMoveType(ent, MOVETYPE_NONE);
+}
+
+public Action BotStickyTouch(ent, other)
+{
+	int owner = Entity_GetOwner(ent);
+	DetonateStickies(owner);
 }
 
 public Action DetonateStickies(int MissileOwner)
