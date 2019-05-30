@@ -122,6 +122,8 @@ public void OnPluginStart()
 	
 	RegAdminCmd("sm_forceclass", Command_forceclass, ADMFLAG_SLAY, "Forces class to other players.");
 	RegAdminCmd("sm_placeitemspawn", Command_placeitemspawn, ADMFLAG_CHANGEMAP, "Places an item spawner in the map.");
+	
+	RegConsoleCmd("sm_class", Command_class, "Sets player class.");
 	//ServerCommand("mp_ct_default_secondary  "); //Sets the default secondary for both teams to " ", which is blank.
 	//ServerCommand("mp_t_default_secondary  ");
 	ServerCommand("mp_death_drop_grenade 0");
@@ -191,6 +193,8 @@ public OnMapStart()
 	PrecacheModel(ROCKET_MODEL, true);
 	PrecacheModel(PIPE_MODEL, true);
 	PrecacheModel(STICKY_MODEL, true);
+	PrecacheModel(BARRIER1_MODEL, true);
+	PrecacheModel(BARRIER2_MODEL, true);
 	PrecacheModel("models/props/de_mill/generatoronwheels.mdl", true);
 	PrecacheModel("models/props/cs_office/vending_machine.mdl", true);
 	PrecacheModel("models/props/coop_cementplant/coop_ammo_stash/coop_ammo_stash_full.mdl", true);
@@ -674,7 +678,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		else if (attacker != 0 && GetClientTeam(victim) == CS_TEAM_CT && GetClientTeam(attacker) == CS_TEAM_T)
 		{
 			int percentage = RoundToNearest(float(SaxtonHaleRage / 50));
-			PrintCenterTextAll("<font color='#FF5959'>Boss HP:</font> %d / %d <font color='85EF45'>(%d%% Rage)</font>", GetClientHealth(iSaxtonHaleClient), healthtype[iSaxtonHaleClient], percentage);
+			PrintCenterTextAll("<font color='#FF5959'>Boss HP:</font><font color='FFFFFF'> %d / %d </font><font color='85EF45'>(%d%% Rage)</font>", GetClientHealth(iSaxtonHaleClient), healthtype[iSaxtonHaleClient], percentage);
 			if (!RageActive)
 			{
 				int AddRage = RoundFloat(fDamage);
@@ -735,7 +739,6 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		if (fDamage < 4.0)fDamage = 0.0;
 		changed = true;
 	}
-	
 	// Weapon Damage Fall Off and Ramp Up
 	if (IsValidEdict(bweapon))
 	{
@@ -761,7 +764,7 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 		{
 			if (distance < 480)
 			{
-				fDamage *= 1.7;
+				fDamage *= 1.5;
 			}
 			else if (distance > 750)
 			{
@@ -785,6 +788,16 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 			}
 			changed = true;
 		}
+		/*
+		else if (StrEqual(wClassname, "weapon_hammer") || StrEqual(wClassname, "weapon_axe") || StrEqual(wClassname, "weapon_fists") 
+			|| StrEqual(wClassname, "weapon_spanner") || StrContains(wClassname, "melee") != -1)
+			*/
+		else if (StrEqual(wClassname, "weapon_fists"))
+		{
+			PrintToChat(attacker, "[CSF2:DEBUG] Using fists");
+			fDamage = 50.0;
+			changed = true;
+		}
 		else if (StrContains(wClassname, "weapon_"))
 		{
 			if (distance < 440)
@@ -803,11 +816,11 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 	
 	if (victim > 0 && attacker > 0) // make sure they are both valid entities
 	{
-		if (class[attacker] == soldier || class[attacker] == demoman)
+		if (!IsValidEdict(bweapon)) // grenades and rockets are always invalid, since they are removed before damage is taken
 		{
-			if (GetClientTeam(attacker) != GetClientTeam(victim))
+			if (class[attacker] == soldier || class[attacker] == demoman)
 			{
-				if (!IsValidEdict(bweapon)) // grenades and rockets are always invalid, since they are removed before damage is taken
+				if (GetClientTeam(attacker) != GetClientTeam(victim))
 				{
 					float ClientPos[3];
 					GetClientEyePosition(victim, ClientPos);
@@ -815,13 +828,21 @@ public Action Event_OnTakeDamage(victim, &attacker, &inflictor, &Float:fDamage, 
 					
 					RJ_Jump(victim, dist, damagePosition, ClientPos, 0.7, false);
 				}
-				
 			}
+			
+			if (class[attacker] == heavyweapons)
+			{
+				if (GetClientTeam(attacker) != GetClientTeam(victim))
+				{
+					fDamage = 65.0;
+					changed = true;
+				}
+			}
+			
 		}
 		
-		
-		
-		if (GetClientTeam(victim) == GetClientTeam(attacker) || GetClientTeam(victim) == 9)
+
+		if (GetClientTeam(victim) == GetClientTeam(attacker))
 		{
 			if (class[attacker] == medic)
 			{
@@ -1532,6 +1553,7 @@ public void RemoveMelee(int client)
 	}
 }
 
+/*
 public Action OnClientCommand(int client, int args)
 {
 	char cmd[16];
@@ -1557,6 +1579,7 @@ public Action OnClientCommand(int client, int args)
 	
 	return Plugin_Continue;
 }
+*/
 
 public void about(int client, int args)
 {
@@ -1566,6 +1589,7 @@ public void about(int client, int args)
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
 {
+	/*
 	//char cmd[16];
 	//GetCmdArg(0, cmd, sizeof(cmd));
 	int args = 2;
@@ -1616,7 +1640,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 	{
 		Command_class(client, args);
 	}
-
+*/
 	if (StrEqual(sArgs, "class scout", false))
 	{
 		ForcePlayerSuicide(client);
@@ -1684,9 +1708,14 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 	{
 		CreateBuildMenu(client);
 	}
+	
+	if (strcmp(sArgs, "destroy", false) == 0)
+	{
+		CreateDestroyMenu(client);
+	}
 }
 
-public void Command_class(int client, int args)
+public Action Command_class(int client, int args)
 {
 	SetClass(client);
 }
@@ -1801,6 +1830,8 @@ public CreateBuildMenu(client)
 	
 	AddMenuItem(menu, "item_sentrygun", "Sentry Gun", ITEMDRAW_DISABLED);
 	AddMenuItem(menu, "item_dispenser", "Dispenser");
+	AddMenuItem(menu, "item_barricade", "Barricade");
+	AddMenuItem(menu, "item_sandbags", "Sandbags");
 	
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
@@ -1820,6 +1851,16 @@ public buildmenu(Handle menu, MenuAction action, param1, param2)
 			{
 				BuildDispenser(param1);
 			}
+			
+			if (StrEqual(item, "item_barricade") && class[param1] == engineer)
+			{
+				BuildBarrier(param1, 0);
+			}
+			
+			if (StrEqual(item, "item_sandbags") && class[param1] == engineer)
+			{
+				BuildBarrier(param1, 1);
+			}
 		}
 		
 		case MenuAction_End:
@@ -1832,7 +1873,55 @@ public buildmenu(Handle menu, MenuAction action, param1, param2)
 	}
 }
 
+public CreateDestroyMenu(client)
+{
+	Handle menu = CreateMenu(destroymenu, MenuAction_Select | MenuAction_End | MenuAction_DisplayItem);
+	SetMenuTitle(menu, "Build Menu");
+	
+	AddMenuItem(menu, "item_sentrygun", "Sentry Gun", ITEMDRAW_DISABLED);
+	AddMenuItem(menu, "item_dispenser", "Dispenser");
+	AddMenuItem(menu, "item_barricade", "Barricade");
+	AddMenuItem(menu, "item_sandbags", "Sandbags");
+	
+	DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
 
+public destroymenu(Handle menu, MenuAction action, param1, param2)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			//param1 is client, param2 is item
+			
+			new String:item[64];
+			GetMenuItem(menu, param2, item, sizeof(item));
+			
+			if (StrEqual(item, "item_dispenser") && class[param1] == engineer)
+			{
+				DestroyDispenser(param1);
+			}
+			
+			if (StrEqual(item, "item_barricade") && class[param1] == engineer)
+			{
+				DestroyBarrier(param1, 0);
+			}
+			
+			if (StrEqual(item, "item_sandbags") && class[param1] == engineer)
+			{
+				DestroyBarrier(param1, 1);
+			}
+		}
+		
+		case MenuAction_End:
+		{
+			//param1 is MenuEnd reason, if canceled param2 is MenuCancel reason
+			CloseHandle(menu);
+			
+		}
+		
+	}
+}
 //public GetClientButtons()
 
 public GetClientHEGrenades(client)
@@ -1868,6 +1957,28 @@ public OnClientDisconnect(client)
 public Action OnShouldBotAttackPlayer(bot, player, &bool:result)
 {
 	bool changed = false;
+	if (player > MAXPLAYERS)
+	{
+		char entName[64];
+		Entity_GetName(player, entName, 64);
+		
+		if (StrContains(entName, "dispenser_"))
+		{
+			int owner = GetEntProp(player, Prop_Send, "m_nSkin");
+			if (owner > 0 && IsClientInGame(owner) && GetClientTeam(owner) != GetClientTeam(bot))
+			{
+				result = true;
+				return Plugin_Changed;
+			}
+			else
+			{
+				result = false;
+				return Plugin_Continue;
+			}
+		}
+	}
+	
+	
 	if (result)return Plugin_Continue;
 	
 	if (class[bot] == medic)
@@ -2062,14 +2173,14 @@ public RestockAmmo(int client, int primaryWeapon, int secondaryWeapon, int facto
 	if (primaryWeapon != -1)
 	{
 		int primaryRes = GetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-		int addedAmmo = RoundToNearest(float(iPrimaryReserveAmmo[view_as<int>(class[client])]) / factor);
+		int addedAmmo = RoundToNearest(float(iPrimaryReserveAmmo[class[client] - 1]) / factor);
 		SetEntProp(primaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", primaryRes + addedAmmo);
 	}
 	
 	if (secondaryWeapon != -1)
 	{
 		int secondaryRes = GetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount");
-		int addedAmmo = RoundToNearest(float(iSecondaryReserveAmmo[view_as<int>(class[client])]) / factor);
+		int addedAmmo = RoundToNearest(float(iSecondaryReserveAmmo[class[client] - 1]) / factor);
 		SetEntProp(secondaryWeapon, Prop_Send, "m_iPrimaryReserveAmmoCount", secondaryRes + addedAmmo);
 	}
 }

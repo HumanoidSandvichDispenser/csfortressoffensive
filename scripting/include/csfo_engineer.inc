@@ -15,6 +15,8 @@
 #define BUILDINGMAXHEALTH 180
 #define DISPENSER_MODEL "models/props/de_mill/generatoronwheels.mdl"
 #define SENTRY_MODEL ""
+#define BARRIER1_MODEL "models/props_fortifications/concrete_block001_128_reference.mdl"
+#define BARRIER2_MODEL "models/props/gg_vietnam/sandbags_line2.mdl"
 
 #define SOUND_BUILD "physics/metal/metal_computer_impact_soft1.wav"
 #define SOUND_IMPACT "physics/metal/metal_box_impact_hard1.wav"
@@ -71,6 +73,78 @@ bool BuildDispenser(int client)
 	
 }
 
+bool BuildBarrier(int client, int type)
+{
+	char dispenserName[32];
+	Format(dispenserName, 32, "barrier_%d_%d", type, client);
+	PrintToConsole(client, "[CSF2:DEBUG] Checking if %s already exists...", dispenserName);
+	
+	if (Entity_FindByName(dispenserName) != INVALID_ENT_REFERENCE)
+	{
+		PrintToChat(client, "You've already built this building!");
+		return false;
+	}
+	
+	//PrintToChat(client, "%d", Entity_FindByName(dispenserName, "prop_physics_override"));
+	
+	decl Float:trace_start[3], Float:trace_angle[3], Float:trace_end[3], Float:trace_normal[3];
+	GetClientEyePosition(client, trace_start);
+	GetClientEyeAngles(client, trace_angle);
+	GetAngleVectors(trace_angle, trace_end, NULL_VECTOR, NULL_VECTOR);
+	NormalizeVector(trace_end, trace_end); // end = normal
+	
+	// offset start by near point
+	for (new i = 0; i < 3; i++)
+	trace_start[i] += trace_end[i] * TRACE_START;
+	
+	for (new i = 0; i < 3; i++)
+	trace_end[i] = trace_start[i] + trace_end[i] * TRACE_LENGTH;
+	
+	TR_TraceRayFilter(trace_start, trace_end, CONTENTS_SOLID | CONTENTS_WINDOW, RayType_EndPoint, TraceFilter_All, 0);
+	
+	if (TR_DidHit(INVALID_HANDLE))
+	{
+		TR_GetEndPosition(trace_end, INVALID_HANDLE);
+		TR_GetPlaneNormal(INVALID_HANDLE, trace_normal);
+		
+		CreateBarrier(client, trace_end, trace_normal, type);
+		return true;
+		
+	} else {
+		PrintCenterText(client, "Invalid building position.");
+		return false;
+	}
+	
+}
+
+bool DestroyDispenser(int client)
+{
+	char dispenserName[16];
+	Format(dispenserName, 16, "dispenser_%d", client);
+	int ent = Entity_FindByName(dispenserName);
+	if (ent != INVALID_ENT_REFERENCE)
+	{
+		AcceptEntityInput(ent, "Break");
+		return true;
+	}
+	
+	return false;
+}
+
+bool DestroyBarrier(int client, int type)
+{
+	char dispenserName[32];
+	Format(dispenserName, 32, "barrier_%d_%d", type, client);
+	int ent = Entity_FindByName(dispenserName);
+	if (ent != INVALID_ENT_REFERENCE)
+	{
+		AcceptEntityInput(ent, "Break");
+		return true;
+	}
+	
+	return false;
+}
+
 public Action CreateDispenser(int client, float position[3], float normal[3])
 {
 	
@@ -91,24 +165,28 @@ public Action CreateDispenser(int client, float position[3], float normal[3])
 		char dispenseroutput[64];
 		
 		Format(dispensername, 64, "dispenser_%d", client);
-		Format(triggername, 64, "dispenserTrigger_%d", client);
+		Format(triggername, 32, "dispenserTrigger_%d", client);
 		
 		Entity_SetModel(dispenser, "models/props/de_mill/generatoronwheels.mdl");
 		DispatchKeyValue(dispenser, "physdamagescale", "0.0"); // enable this to destroy via physics?
 		DispatchKeyValue(dispenser, "targetname", dispensername);
-		DispatchKeyValue(dispenser, "spawnflags", "256"); // set "usable" flag
+		DispatchKeyValue(dispenser, "spawnflags", "258"); // set "usable" flag (256) and don't take physics damage (2)
+		DispatchKeyValue(dispenser, "health", "400"); // set "usable" flag (256) and don't take physics damage (2)
 		DispatchSpawn(dispenser);
 		
-		Entity_SetHealth(dispenser, 250);
-		SetEntityMoveType(dispenser, MOVETYPE_NONE);
-		SetEntProp(dispenser, Prop_Data, "m_takedamage", 2);
-		SetEntPropEnt(dispenser, Prop_Data, "m_hOwnerEntity", client);
+		//Entity_SetHealth(dispenser, 400);
+		//SetEntityMoveType(dispenser, MOVETYPE_FLY); // Stay still but with collision
+		SetEntProp(dispenser, Prop_Data, "m_takedamage", 1);
+		SetEntProp(dispenser, Prop_Send, "m_nSkin", client);
+		SetEntPropFloat(dispenser, Prop_Send, "m_flElasticity", 400.0); // Elasticity prop is used so it can replace health, since health does not work for this entity.
+		SetEntityMoveType(dispenser, MOVETYPE_FLY);
 		SetEntityRenderColor(dispenser, 255, 255, 255, 255);
-		Entity_SetHealth(dispenser, 10);
-		Entity_SetCollisionGroup(dispenser, COLLISION_GROUP_DEBRIS);
+		//Entity_SetHealth(dispenser, 10);
+		Entity_SetCollisionGroup(dispenser, COLLISION_GROUP_PUSHAWAY);
 		angles[0] += 90;
 		TeleportEntity(dispenser, position, angles, NULL_VECTOR);
 		
+		PrintHintText(client, "Repairing dispenser HP: %d / 400", RoundToNearest(GetEntPropFloat(dispenser, Prop_Send, "m_flElasticity")));
 		
 		Format(dispenseroutput, sizeof(dispenseroutput), "%s,Kill,,0,-1", triggername);
 		DispatchKeyValue(dispenser, "OnBreak", dispenseroutput);
@@ -139,9 +217,62 @@ public Action CreateDispenser(int client, float position[3], float normal[3])
 	*/
 }
 
+public Action CreateBarrier(int client, float position[3], float angs[3], int type)
+{
+	
+	
+	float angles[3];
+	GetVectorAngles(angs, angles);
+	
+	
+	// Create Dispenser
+	int dispenser = CreateEntityByName("prop_physics_override");
+	if (dispenser != INVALID_ENT_REFERENCE)
+	{
+		char dispensername[32];
+
+		Format(dispensername, 64, "barrier_%d_%d", type, client);
+		
+		if (type == 0) 
+			Entity_SetModel(dispenser, BARRIER1_MODEL);
+		else
+			Entity_SetModel(dispenser, BARRIER2_MODEL);
+		DispatchKeyValue(dispenser, "physdamagescale", "0.0"); // enable this to destroy via physics?
+		DispatchKeyValue(dispenser, "targetname", dispensername);
+		DispatchKeyValue(dispenser, "spawnflags", "258"); // set "usable" flag (256) and don't take physics damage (2)
+		DispatchKeyValue(dispenser, "health", "400"); // set "usable" flag (256) and don't take physics damage (2)
+		DispatchSpawn(dispenser);
+		
+		SetEntProp(dispenser, Prop_Data, "m_takedamage", 1);
+		SetEntProp(dispenser, Prop_Send, "m_nSkin", client);
+		SetEntPropFloat(dispenser, Prop_Send, "m_flElasticity", 700.0); // Elasticity prop is used so it can replace health, since health does not work for this entity.
+		SetEntityMoveType(dispenser, MOVETYPE_FLY);
+		SetEntityRenderColor(dispenser, 255, 255, 255, 255);
+		//Entity_SetHealth(dispenser, 10);
+		Entity_SetCollisionGroup(dispenser, COLLISION_GROUP_PUSHAWAY);
+		angles[0] += 90;
+		TeleportEntity(dispenser, position, angles, NULL_VECTOR);
+		
+		PrintHintText(client, "Repairing dispenser HP: %d / 700", RoundToNearest(GetEntPropFloat(dispenser, Prop_Send, "m_flElasticity")));
+		
+		HookSingleEntityOutput(dispenser, "OnBreak", UnhookDispenser, false);
+		
+		EmitSoundToAll(SOUND_BUILD, dispenser);
+		
+		SDKHook(dispenser, SDKHook_OnTakeDamage, Event_EntOnTakeDamage);
+	}
+}
+
 // 
 public UnhookDispenser(const char[] output, any caller, any activator, float delay)
 {
+	char buildingName[64];
+	Entity_GetName(caller, buildingName, 64);
+	int owner = GetEntProp(caller, Prop_Data, "m_nSkin");
+	if (String_StartsWith(buildingName, "dispenser_")) PrintToChat(owner, "Your dispenser \x0Fhas been destroyed!");
+	if (String_StartsWith(buildingName, "barrier_0_")) PrintToChat(owner, "Your barricade \x0Fhas been destroyed!");
+	if (String_StartsWith(buildingName, "barrier_1_")) PrintToChat(owner, "Your sandbags \x0Fhave been destroyed!");
+	
 	SDKUnhook(caller, SDKHook_OnTakeDamage, Event_EntOnTakeDamage);
 }
 
@@ -152,11 +283,11 @@ public int CreateTrigger(float position[3], char triggername[32])
 	if (trigger != -1)
 	{
 		DispatchKeyValue(trigger, "targetname", triggername);
-		DispatchKeyValue(trigger, "damage", "-10");
+		DispatchKeyValue(trigger, "damage", "-20");
 		DispatchKeyValue(trigger, "nodmgforce", "1");
 		DispatchKeyValue(trigger, "spawnflags", "4097");
 	}
-	
+
 	DispatchSpawn(trigger);
 	ActivateEntity(trigger);
 	
@@ -164,8 +295,8 @@ public int CreateTrigger(float position[3], char triggername[32])
 	
 	SetEntityModel(trigger, "models/props/cs_office/vending_machine.mdl");
 	
-	float minbounds[3] =  { -32.0, -32.0, 0.0 };
-	float maxbounds[3] =  { 32.0, 32.0, 64.0 };
+	float minbounds[3] =  { -128.0, -128.0, 0.0 };
+	float maxbounds[3] =  { 128.0, 128.0, 96.0 };
 	SetEntPropVector(trigger, Prop_Send, "m_vecMins", minbounds);
 	SetEntPropVector(trigger, Prop_Send, "m_vecMaxs", maxbounds);
 	
@@ -220,11 +351,34 @@ public Action Event_EntOnTakeDamage(entity, &attacker, &inflictor, &Float:fDamag
 {
 	if (attacker > 0 && attacker < MAXPLAYERS && IsClientConnected(attacker))
 	{
-		int owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+		char buildingName[64];
+		Entity_GetName(entity, buildingName, 64);
+		int owner = GetEntProp(entity, Prop_Data, "m_nSkin");
+		float HP = GetEntPropFloat(entity, Prop_Send, "m_flElasticity");
 		if (GetClientTeam(attacker) == GetClientTeam(owner))
 		{
-			fDamage = 0.0;
-			return Plugin_Changed;
+			if (owner == attacker)
+			{
+				HP += 80;
+				if (String_StartsWith(buildingName, "dispenser_")) 
+				{
+					if (HP > 400) HP = 400.0;
+					SetEntPropFloat(entity, Prop_Send, "m_flElasticity", HP);
+					PrintHintText(owner, "Repairing dispenser HP: %d / 400", RoundToNearest(HP));
+				}
+				if (String_StartsWith(buildingName, "barrier_")) 
+				{
+					if (HP > 700) HP = 700.0;
+					SetEntPropFloat(entity, Prop_Send, "m_flElasticity", HP);
+					PrintHintText(owner, "Repairing dispenser HP: %d / 700", RoundToNearest(HP));
+				}
+			}
+		}
+		else
+		{
+			HP -= fDamage;
+			SetEntPropFloat(entity, Prop_Send, "m_flElasticity", HP);
+			if (HP <= 0) AcceptEntityInput(entity, "Break");
 		}
 	}
 	return Plugin_Continue;

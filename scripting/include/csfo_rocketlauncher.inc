@@ -220,7 +220,7 @@ public Action:RocketTouch(ent, other)
 			TeleportEntity(ExplosionIndex, MissilePos, NULL_VECTOR, NULL_VECTOR);
 			SetEntPropEnt(ExplosionIndex, Prop_Send, "m_hOwnerEntity", MissileOwner);
 			SetEntProp(ExplosionIndex, Prop_Send, "m_iTeamNum", MissileOwnerTeam);
-			//EmitSoundToAll("weapons/hegrenade/explode5.wav", ExplosionIndex, 1, 90);
+			EmitSoundToAll("weapons/hegrenade/explode4.wav", ExplosionIndex, 1, 90);
 			AcceptEntityInput(ExplosionIndex, "Explode");
 			DispatchKeyValue(ExplosionIndex, "classname", "env_explosion");
 			AcceptEntityInput(ExplosionIndex, "Kill");
